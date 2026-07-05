@@ -36,7 +36,22 @@ c.execute('''CREATE TABLE IF NOT EXISTS transactions (
                 account_type TEXT, 
                 ref_name TEXT)''')
 
-# إدخال بيانات افتراضية إذا كانت الجداول فارغة
+# --- ترقية تلقائية لقاعدة البيانات لحل مشكلة KeyError ---
+try:
+    c.execute("SELECT total_usd FROM transactions LIMIT 1")
+except sqlite3.OperationalError:
+    # إذا لم تكن الأعمدة الجديدة موجودة، يتم إضافتها وحفظ البيانات القديمة في خانة الإجمالي
+    try:
+        c.execute("ALTER TABLE transactions ADD COLUMN amount_usd REAL DEFAULT 0")
+        c.execute("ALTER TABLE transactions ADD COLUMN amount_lbp REAL DEFAULT 0")
+        c.execute("ALTER TABLE transactions ADD COLUMN total_usd REAL DEFAULT 0")
+        # تحويل المبالغ القديمة إذا وُجدت إلى العمود الجديد
+        c.execute("UPDATE transactions SET total_usd = amount, amount_usd = amount WHERE total_usd = 0")
+        conn.commit()
+    except Exception as e:
+        pass
+
+# إدخل بيانات افتراضية إذا كانت الجداول فارغة
 c.execute("INSERT OR IGNORE INTO settings VALUES ('dollar_rate', '89500')")
 for fund_name in ["المسجد العامة", "الزكاة", "الصدقات", "المشاريع"]:
     c.execute("INSERT OR IGNORE INTO funds (name) VALUES (?)", (fund_name,))
@@ -114,7 +129,7 @@ elif page == "📝 القيود اليومية":
         submit = st.form_submit_button("حفظ السند")
         if submit:
             if usd_amount == 0 and lbp_amount == 0:
-                st.error("الرجاء إدخل قيمة في حقل الدولار أو اللبناني على الأقل.")
+                st.error("الرجاء إدخال قيمة في حقل الدولار أو اللبناني على الأقل.")
             elif not description:
                 st.error("الرجاء إدخال بيان للعملية.")
             else:
@@ -137,7 +152,6 @@ elif page == "📝 القيود اليومية":
                                   FROM transactions ORDER BY id DESC""", conn)
     
     if not df_all.empty:
-        # هنا تم تعديل طريقة العرض لتجنب الخطأ البرمجي وعرض الأرقام بشكل أنيق جداً
         st.dataframe(df_all, use_container_width=True)
     else:
         st.caption("لا توجد قيود مسجلة بعد.")
@@ -227,7 +241,7 @@ elif page == "📊 التقارير":
             df_filtered = df_report[df_report['date'].dt.year == year]
             
         st.write(df_filtered)
-        st.button("🖨️ طباعة (استخدم ميزة طباعة المتصفح لـ PDF)")
+        st.button("🖨️ طباعة")
     else:
         st.caption("لا توجد بيانات لتوليد التقارير.")
 
