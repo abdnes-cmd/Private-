@@ -28,7 +28,8 @@ c.execute("CREATE TABLE IF NOT EXISTS transactions (id INTEGER PRIMARY KEY AUTOI
 
 c.execute("INSERT OR IGNORE INTO settings VALUES ('dollar_rate', '89500')")
 
-for fund_name in ["المسجد العامة", "الزكاة", "الصدقات", "المشاريع"]:
+# إضافة الصندوق المخصص الجديد تلقائياً إلى النظام
+for fund_name in ["المسجد العامة", "الزكاة", "الصدقات", "المشاريع", "ذمة وسلف الشيخ عبد الكريم"]:
     c.execute("INSERT OR IGNORE INTO funds (name) VALUES (?)", (fund_name,))
 conn.commit()
 
@@ -39,7 +40,7 @@ dollar_rate = float(fetch_val[0]) if fetch_val else 89500.0
 
 # --- القائمة الجانبية للتنقل ---
 st.sidebar.markdown("<h2 style='text-align: center; color: #D4AF37;'>🕌 إدارة المسجد</h2>", unsafe_allow_html=True)
-page = st.sidebar.radio("انتقل إلى:", ["🏠 الرئيسية (لوحة التحكم)", "📝 القيود اليومية", "💵 الصناديق", "👤 حساب الشيخ عبد الكريم", "👥 الرواتب", "📊 التقارير", "⚙️ الإعدادات"], key="side_nav_panel_unique_v8")
+page = st.sidebar.radio("انتقل إلى:", ["🏠 الرئيسية (لوحة التحكم)", "📝 القيود اليومية", "💵 الصناديق", "👤 حساب الشيخ عبد الكريم", "👥 الرواتب", "📊 التقارير", "⚙️ الإعدادات"], key="side_nav_panel_unique_v9")
 
 # --- 1. الصفحة الرئيسية ---
 if page == "🏠 الرئيسية (لوحة التحكم)":
@@ -62,11 +63,10 @@ if page == "🏠 الرئيسية (لوحة التحكم)":
     
     st.write("---")
     
-    # 📋 الجدول المالي الشامل للموظفين (تم تصحيح الحرف هنا)
+    # 📋 الجدول المالي الشامل للموظفين
     st.subheader("📊 ملخص رواتب وحسابات الموظفين والعاملين ($)")
     
     df_emps_db = pd.read_sql_query("SELECT name, salary FROM employees", conn)
-    # تم تصحيح pd.series إلى pd.Series لتفادي الخطأ تماماً
     emp_salaries_dict = pd.Series(df_emps_db.salary.values, index=df_emps_db.name).to_dict() if not df_emps_db.empty else {}
     
     distinct_ref_names = []
@@ -123,11 +123,11 @@ elif page == "📝 القيود اليومية":
     st.info(f"رقم السند التلقائي القادم: {next_id}")
     
     col1, col2 = st.columns(2)
-    t_date = col1.date_input("التاريخ", datetime.now(), key="q_entry_date_v8")
-    t_type = col2.selectbox("نوع العملية", ["قبض", "صرف"], key="q_entry_type_v8")
+    t_date = col1.date_input("التاريخ", datetime.now(), key="q_entry_date_v9")
+    t_type = col2.selectbox("نوع العملية", ["قبض", "صرف"], key="q_entry_type_v9")
     
-    usd_amount = col1.number_input("المبلغ بالدولار", min_value=0.0, step=1.0, value=0.0, key="q_usd_input_v8")
-    lbp_amount = col2.number_input("المبلغ بالليرة اللبنانية", min_value=0.0, step=1000.0, value=0.0, key="q_lbp_input_v8")
+    usd_amount = col1.number_input("المبلغ بالدولار", min_value=0.0, step=1.0, value=0.0, key="q_usd_input_v9")
+    lbp_amount = col2.number_input("المبلغ بالليرة اللبنانية", min_value=0.0, step=1000.0, value=0.0, key="q_lbp_input_v9")
     
     converted_instant = round(lbp_amount / dollar_rate) if dollar_rate > 0 else 0
     total_calculated_usd = round(usd_amount + converted_instant)
@@ -140,19 +140,19 @@ elif page == "📝 القيود اليومية":
         - إجمالي السند بالكامل: {total_calculated_usd:,.0f} دولار
         """)
         
-    fund = col1.selectbox("الصندوق المتأثر", funds_list, key="q_entry_fund_v8")
-    account_type = col2.selectbox("نوع الحساب", ["عام", "حساب الشيخ عبد الكريم", "رواتب الموظفين"], key="q_entry_account_type_v8")
+    fund = col1.selectbox("الصندوق المتأثر", funds_list, key="q_entry_fund_v9")
+    account_type = col2.selectbox("نوع الحساب", ["عام", "حساب الشيخ عبد الكريم", "رواتب الموظفين"], key="q_entry_account_type_v9")
     
     ref_name = ""
     if account_type == "رواتب الموظفين":
         if emp_list:
-            ref_name = st.selectbox("اختر الموظف", emp_list, key="q_entry_employee_ref_v8")
+            ref_name = st.selectbox("اختر الموظف", emp_list, key="q_entry_employee_ref_v9")
         else:
             st.error("⚠️ لا يوجد موظفون مسجلون لتحديدهم. اذهب لصفحة الرواتب أولاً لإضافة الموظفين.")
         
-    description = st.text_area("البيان / تفاصيل القيد", key="q_entry_description_v8")
+    description = st.text_area("البيان / تفاصيل القيد", key="q_entry_description_v9")
     
-    if st.button("حفظ السند المالي", key="q_entry_save_btn_v8"):
+    if st.button("حفظ السند المالي", key="q_entry_save_btn_v9"):
         if usd_amount == 0 and lbp_amount == 0:
             st.error("الرجاء إدخال قيمة في حقل الدولار أو اللبناني على الأقل.")
         elif account_type == "رواتب الموظفين" and not ref_name:
