@@ -39,7 +39,7 @@ dollar_rate = float(fetch_val[0]) if fetch_val else 89500.0
 
 # --- القائمة الجانبية للتنقل ---
 st.sidebar.markdown("<h2 style='text-align: center; color: #D4AF37;'>🕌 إدارة المسجد</h2>", unsafe_allow_html=True)
-page = st.sidebar.radio("انتقل إلى:", ["🏠 الرئيسية (لوحة التحكم)", "📝 القيود اليومية", "💵 الصناديق", "👤 حساب الشيخ عبد الكريم", "👥 الرواتب", "📊 التقارير", "⚙️ الإعدادات"], key="side_nav_panel_unique_v4")
+page = st.sidebar.radio("انتقل إلى:", ["🏠 الرئيسية (لوحة التحكم)", "📝 القيود اليومية", "💵 الصناديق", "👤 حساب الشيخ عبد الكريم", "👥 الرواتب", "📊 التقارير", "⚙️ الإعدادات"], key="side_nav_panel_unique_v5")
 
 # --- 1. الصفحة الرئيسية ---
 if page == "🏠 الرئيسية (لوحة التحكم)":
@@ -84,11 +84,11 @@ elif page == "📝 القيود اليومية":
     st.info(f"رقم السند التلقائي القادم: {next_id}")
     
     col1, col2 = st.columns(2)
-    t_date = col1.date_input("التاريخ", datetime.now(), key="q_entry_date_v4")
-    t_type = col2.selectbox("نوع العملية", ["قبض", "صرف"], key="q_entry_type_v4")
+    t_date = col1.date_input("التاريخ", datetime.now(), key="q_entry_date_v5")
+    t_type = col2.selectbox("نوع العملية", ["قبض", "صرف"], key="q_entry_type_v5")
     
-    usd_amount = col1.number_input("المبلغ بالدولار", min_value=0.0, step=1.0, value=0.0, key="q_usd_input_v4")
-    lbp_amount = col2.number_input("المبلغ بالليرة اللبنانية", min_value=0.0, step=1000.0, value=0.0, key="q_lbp_input_v4")
+    usd_amount = col1.number_input("المبلغ بالدولار", min_value=0.0, step=1.0, value=0.0, key="q_usd_input_v5")
+    lbp_amount = col2.number_input("المبلغ بالليرة اللبنانية", min_value=0.0, step=1000.0, value=0.0, key="q_lbp_input_v5")
     
     converted_instant = round(lbp_amount / dollar_rate) if dollar_rate > 0 else 0
     total_calculated_usd = round(usd_amount + converted_instant)
@@ -101,19 +101,19 @@ elif page == "📝 القيود اليومية":
         - إجمالي السند بالكامل: {total_calculated_usd:,.0f} دولار
         """)
         
-    fund = col1.selectbox("الصندوق المتأثر", funds_list, key="q_entry_fund_v4")
-    account_type = col2.selectbox("نوع الحساب", ["عام", "حساب الشيخ عبد الكريم", "رواتب الموظفين"], key="q_entry_account_type_v4")
+    fund = col1.selectbox("الصندوق المتأثر", funds_list, key="q_entry_fund_v5")
+    account_type = col2.selectbox("نوع الحساب", ["عام", "حساب الشيخ عبد الكريم", "رواتب الموظفين"], key="q_entry_account_type_v5")
     
     ref_name = ""
     if account_type == "رواتب الموظفين":
         if emp_list:
-            ref_name = st.selectbox("اختر الموظف", emp_list, key="q_entry_employee_ref_v4")
+            ref_name = st.selectbox("اختر الموظف", emp_list, key="q_entry_employee_ref_v5")
         else:
             st.error("⚠️ لا يوجد موظفون مسجلون لتحديدهم. اذهب لصفحة الرواتب أولاً لإضافة الموظفين.")
         
-    description = st.text_area("البيان / تفاصيل القيد", key="q_entry_description_v4")
+    description = st.text_area("البيان / تفاصيل القيد", key="q_entry_description_v5")
     
-    if st.button("حفظ السند المالي", key="q_entry_save_btn_v4"):
+    if st.button("حفظ السند المالي", key="q_entry_save_btn_v5"):
         if usd_amount == 0 and lbp_amount == 0:
             st.error("الرجاء إدخال قيمة في حقل الدولار أو اللبناني على الأقل.")
         elif account_type == "رواتب الموظفين" and not ref_name:
@@ -185,11 +185,11 @@ elif page == "👥 الرواتب":
     st.subheader("📝 إضافة موظف جديد أو تعديل راتبه")
     col_name, col_sal, col_btn = st.columns([2, 1, 1])
     
-    emp_name = col_name.text_input("اسم الموظف / العامل كاملاً", key="emp_reg_name_v4")
-    emp_salary = col_sal.number_input("الراتب الشهري ($)", min_value=0, step=50, value=0, key="emp_reg_salary_v4")
+    emp_name = col_name.text_input("اسم الموظف / العامل كاملاً", key="emp_reg_name_v5")
+    emp_salary = col_sal.number_input("الراتب الشهري ($)", min_value=0, step=50, value=0, key="emp_reg_salary_v5")
     
     col_btn.markdown("<br>", unsafe_allow_html=True)
-    if col_btn.button("حفظ البيانات", key="emp_reg_save_btn_v4"):
+    if col_btn.button("حفظ البيانات", key="emp_reg_save_btn_v5"):
         if emp_name:
             c.execute("INSERT OR REPLACE INTO employees (name, salary) VALUES (?, ?)", (emp_name, emp_salary))
             conn.commit()
@@ -208,20 +208,18 @@ elif page == "👥 الرواتب":
     else:
         df_trans = pd.read_sql_query("SELECT * FROM transactions WHERE account_type='رواتب الموظفين'", conn)
         
-        # عرض الموظفين بطريقة تفاعلية تتيح الحذف الفوري
         for idx, row in df_emps.iterrows():
             paid = df_trans[(df_trans['ref_name'] == row['name']) & (df_trans['type'] == 'صرف')]['total_usd'].sum()
             rem = row['salary'] - paid
             
-            # تقسيم السطر إلى أعمدة لعرض البيانات وزر الحذف بجانبها
             c1, c2, c3, c4, c5 = st.columns([2, 1, 1, 1, 1])
             c1.write(f"**👤 الموظف:** {row['name']}")
             c2.write(f"**المستحق:** ${row['salary']:,.0f}")
             c3.write(f"**المدفوع:** ${paid:,.0f}")
             c4.write(f"**المتبقي:** ${rem:,.0f}")
             
-            # زر الحذف مخصص لكل موظف بشكل مستقل
-            if c5.button("🗑️ حذف الموظف", key=f"del_emp_{row['name']}"):
+            # تم تعديل المفتاح هنا بإضافة idx ليكون فريداً بالكامل ويختفي الخطأ
+            if c5.button("🗑️ حذف الموظف", key=f"del_btn_idx_{idx}"):
                 c.execute("DELETE FROM employees WHERE name = ?", (row['name'],))
                 conn.commit()
                 st.success(f"تم حذف الموظف {row['name']} بنجاح!")
@@ -231,25 +229,25 @@ elif page == "👥 الرواتب":
 # --- 6. التقارير ---
 elif page == "📊 التقارير":
     st.title("📊 التقارير المالية والطباعة")
-    rep_type = st.selectbox("نوع التقرير", ["يومي", "شهري", "سنوي"], key="rep_filter_type_v4")
+    rep_type = st.selectbox("نوع التقرير", ["يومي", "شهري", "سنوي"], key="rep_filter_type_v5")
     df_report = pd.read_sql_query("SELECT id, date, description, type, CAST(amount_usd AS INT) AS 'دولار', CAST(amount_lbp AS INT) AS 'لبناني', CAST(total_usd AS INT) AS 'الإجمالي ($)', fund FROM transactions", conn)
     if not df_report.empty:
         df_report['date'] = pd.to_datetime(df_report['date'])
         if rep_type == "يومي": 
-            df_filtered = df_report[df_report['date'].dt.date == st.date_input("اختر اليوم", datetime.now(), key="rep_date_picker_v4")]
+            df_filtered = df_report[df_report['date'].dt.date == st.date_input("اختر اليوم", datetime.now(), key="rep_date_picker_v5")]
         elif rep_type == "شهري": 
-            df_filtered = df_report[df_report['date'].dt.month == st.slider("اختر الشهر", 1, 12, int(datetime.now().month), key="rep_month_slider_v4")]
+            df_filtered = df_report[df_report['date'].dt.month == st.slider("اختر الشهر", 1, 12, int(datetime.now().month), key="rep_month_slider_v5")]
         else: 
-            df_filtered = df_report[df_report['date'].dt.year == st.number_input("اختر السنة", min_value=2020, max_value=2030, value=int(datetime.now().year), key="rep_year_input_v4")]
+            df_filtered = df_report[df_report['date'].dt.year == st.number_input("اختر السنة", min_value=2020, max_value=2030, value=int(datetime.now().year), key="rep_year_input_v5")]
         st.write(df_filtered)
-        st.button("🖨️ طباعة", key="rep_print_btn_v4")
+        st.button("🖨️ طباعة", key="rep_print_btn_v5")
 
 # --- 7. الإعدادات ---
 elif page == "⚙️ الإعدادات":
     st.title("⚙️ الإعدادات العامة للنظام")
-    new_rate = st.number_input("سعر صرف الدولار الحالي مقابل الليرة اللبنانية (مثال: 89500)", value=dollar_rate, step=500.0, key="sys_setting_exchange_rate_input_final_v4")
+    new_rate = st.number_input("سعر صرف الدولار الحالي مقابل الليرة اللبنانية (مثال: 89500)", value=dollar_rate, step=500.0, key="sys_setting_exchange_rate_input_final_v5")
     
-    if st.button("تحديث سعر الصرف", key="sys_setting_update_rate_btn_v4"):
+    if st.button("تحديث سعر الصرف", key="sys_setting_update_rate_btn_v5"):
         c.execute("UPDATE settings SET value=? WHERE key='dollar_rate'", (str(new_rate),))
         conn.commit()
         st.success(f"تم تحديث السعر بنجاح إلى: {new_rate:,.0f} ل.ل")
@@ -257,7 +255,7 @@ elif page == "⚙️ الإعدادات":
         
     st.write("---")
     st.subheader("🚨 منطقة الخطر (إعادة تعيين قاعدة البيانات)")
-    if st.button("🧹 تصفير وحذف جميع السندات المخربطة", key="sys_setting_clear_db_btn_v4"):
+    if st.button("🧹 تصفير وحذف جميع السندات المخربطة", key="sys_setting_clear_db_btn_v5"):
         c.execute("DROP TABLE IF EXISTS transactions")
         c.execute("UPDATE settings SET value='89500' WHERE key='dollar_rate'")
         conn.commit()
