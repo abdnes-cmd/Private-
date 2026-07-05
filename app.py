@@ -36,16 +36,14 @@ c.execute('''CREATE TABLE IF NOT EXISTS transactions (
                 account_type TEXT, 
                 ref_name TEXT)''')
 
-# --- ترقية تلقائية لقاعدة البيانات لحل مشكلة KeyError ---
+# --- ترقية تلقائية لقاعدة البيانات لحل مشكلة KeyError القديمة ---
 try:
     c.execute("SELECT total_usd FROM transactions LIMIT 1")
 except sqlite3.OperationalError:
-    # إذا لم تكن الأعمدة الجديدة موجودة، يتم إضافتها وحفظ البيانات القديمة في خانة الإجمالي
     try:
         c.execute("ALTER TABLE transactions ADD COLUMN amount_usd REAL DEFAULT 0")
         c.execute("ALTER TABLE transactions ADD COLUMN amount_lbp REAL DEFAULT 0")
         c.execute("ALTER TABLE transactions ADD COLUMN total_usd REAL DEFAULT 0")
-        # تحويل المبالغ القديمة إذا وُجدت إلى العمود الجديد
         c.execute("UPDATE transactions SET total_usd = amount, amount_usd = amount WHERE total_usd = 0")
         conn.commit()
     except Exception as e:
@@ -71,7 +69,6 @@ if page == "🏠 الرئيسية (لوحة التحكم)":
     st.markdown(f"<p style='text-align: center; color: #C5A059;'>سعر الصرف المعتمد حالياً: {dollar_rate:,.0f} ل.لبنانية للدولار</p>", unsafe_allow_html=True)
     st.write("---")
     
-    # حساب الإجماليات بالدولار
     df_trans = pd.read_sql_query("SELECT * FROM transactions", conn)
     if not df_trans.empty:
         total_in = df_trans[df_trans['type'] == 'قبض']['total_usd'].sum()
@@ -95,10 +92,10 @@ if page == "🏠 الرئيسية (لوحة التحكم)":
         fund_balances.append({"الصندوق": f, "الرصيد الحالي بالدولار ($)": f"${f_in - f_out:,.2f}"})
     st.table(pd.DataFrame(fund_balances))
 
-# --- 2. القيود اليومية ---
+# --- 2. القيود اليومية (مع ميزة التحويل الفوري المباشر) ---
 elif page == "📝 القيود اليومية":
     st.title("📝 تسجيل القيود اليومية (يدعم الدولار واللبناني)")
-    st.caption(f"💡 أي مبلغ بالليرة اللبنانية سيتم تحويله تلقائياً للدولار بناءً على السعر الحالي: {dollar_rate:,.0f} ل.ل")
+    st.caption(f"💡 سعر الصرف المعتمد حالياً للتحويل: {dollar_rate:,.0f} ل.ل")
     
     funds_list = [r[0] for r in c.execute("SELECT name FROM funds").fetchall()]
     emp_list = [r[0] for r in c.execute("SELECT name FROM employees").fetchall()]
@@ -109,40 +106,45 @@ elif page == "📝 القيود اليومية":
     
     st.info(f"رقم السند التلقائي القادم: {next_id}")
     
-    with st.form("transaction_form", clear_on_submit=True):
-        col1, col2 = st.columns(2)
-        t_date = col1.date_input("التاريخ", datetime.now())
-        t_type = col2.selectbox("نوع العملية", ["قبض", "صرف"])
+    # حقول الإدخال خارج الـ Form الفرعي لتعمل المعاينة اللحظية والتحويل الفوري تلقائياً
+    col1, col2 = st.columns(2)
+    t_date = col1.date_input("التاريخ", datetime.now())
+    t_type = col2.selectbox("نوع العملية", ["قبض", "صرف"])
+    
+    usd_amount = col1.number_input("المبلغ بالدولار ($)", min_value=0.0, step=10.0, value=0.0)
+    lbp_amount = col2.number_input("المبلغ بالليرة اللبنانية (ل.ل)", min_value=0.0, step=100000.0, value=0.0)
+    
+    # حساب قيمة اللبناني بالدولار فورياً وعرضها للمستخدم قبل الحفظ
+    converted_instant = lbp_amount / dollar_rate if dollar_rate > 0 else 0
+    total_calculated_usd = usd_amount + converted_instant
+    
+    # صندوق المعاينة الفورية الذكي
+    if lbp_amount > 0:
+        st.warning(f"🔄 **تحويل فوري:** {lbp_amount:,.0f} ل.ل تساوي حالياً: **${converted_instant:,.2f}** | إجمالي السند بالكامل: **${total_calculated_usd:,.2f}**")
         
-        usd_amount = col1.number_input("المبلغ بالدولار ($)", min_value=0.0, step=10.0, value=0.0)
-        lbp_amount = col2.number_input("المبلغ بالليرة اللبنانية (ل.ل)", min_value=0.0, step=100000.0, value=0.0)
+    fund = col1.selectbox("الصندوق المتأثر", funds_list)
+    account_type = col2.selectbox("نوع الحساب", ["عام", "حساب الشيخ عبد الكريم", "رواتب الموظفين"])
+    
+    ref_name = ""
+    if account_type == "رواتب الموظفين":
+        ref_name = st.selectbox("اختر الموظف", emp_list)
         
-        fund = col1.selectbox("الصندوق المتأثر", funds_list)
-        account_type = col2.selectbox("نوع الحساب", ["عام", "حساب الشيخ عبد الكريم", "رواتب الموظفين"])
-        
-        ref_name = ""
-        if account_type == "رواتب الموظفين":
-            ref_name = st.selectbox("اختر الموظف", emp_list)
-            
-        description = st.text_area("البيان / تفاصيل القيد")
-        
-        submit = st.form_submit_button("حفظ السند")
-        if submit:
-            if usd_amount == 0 and lbp_amount == 0:
-                st.error("الرجاء إدخال قيمة في حقل الدولار أو اللبناني على الأقل.")
-            elif not description:
-                st.error("الرجاء إدخال بيان للعملية.")
-            else:
-                converted_lbp_to_usd = lbp_amount / dollar_rate
-                total_usd = usd_amount + converted_lbp_to_usd
-                
-                c.execute("""INSERT INTO transactions 
-                             (date, description, type, amount_usd, amount_lbp, total_usd, fund, account_type, ref_name) 
-                             VALUES (?,?,?,?,?,?,?,?,?)""",
-                          (str(t_date), description, t_type, usd_amount, lbp_amount, total_usd, fund, account_type, ref_name))
-                conn.commit()
-                st.success(f"تم حفظ السند رقم {next_id} بنجاح! الإجمالي: ${total_usd:,.2f}")
-                st.experimental_rerun()
+    description = st.text_area("البيان / تفاصيل القيد")
+    
+    # زر الحفظ المباشر
+    if st.button("حفظ السند المالي"):
+        if usd_amount == 0 and lbp_amount == 0:
+            st.error("الرجاء إدخال قيمة في حقل الدولار أو اللبناني على الأقل.")
+        elif not description:
+            st.error("الرجاء إدخال بيان للعملية.")
+        else:
+            c.execute("""INSERT INTO transactions 
+                         (date, description, type, amount_usd, amount_lbp, total_usd, fund, account_type, ref_name) 
+                         VALUES (?,?,?,?,?,?,?,?,?)""",
+                      (str(t_date), description, t_type, usd_amount, lbp_amount, total_calculated_usd, fund, account_type, ref_name))
+            conn.commit()
+            st.success(f"تم حفظ السند رقم {next_id} بنجاح! الرصيد الإجمالي المضاف: ${total_calculated_usd:,.2f}")
+            st.rerun()
 
     st.write("---")
     st.subheader("📋 القيود المسجلة مؤخراً")
@@ -254,7 +256,7 @@ elif page == "⚙️ الإعدادات":
         c.execute("UPDATE settings SET value=? WHERE key='dollar_rate'", (str(new_rate),))
         conn.commit()
         st.success(f"تم تحديث السعر بنجاح إلى: {new_rate:,.0f} ل.ل")
-        st.experimental_rerun()
+        st.rerun()
         
     st.write("---")
     st.subheader("➕ إضافة صندوق جديد")
@@ -265,7 +267,7 @@ elif page == "⚙️ الإعدادات":
                 c.execute("INSERT INTO funds (name) VALUES (?)", (new_fund,))
                 conn.commit()
                 st.success(f"تمت إضافة صندوق {new_fund}")
-                st.experimental_rerun()
+                st.rerun()
             except:
                 st.error("الصندوق موجود مسبقاً")
                 
@@ -279,4 +281,4 @@ elif page == "⚙️ الإعدادات":
             c.execute("INSERT INTO employees (name, salary) VALUES (?,?)", (emp_name, emp_salary))
             conn.commit()
             st.success(f"تمت إضافة الموظف {emp_name}")
-            st.experimental_rerun()
+            st.rerun()
