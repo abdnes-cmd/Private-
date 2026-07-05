@@ -29,13 +29,15 @@ c.execute('''CREATE TABLE IF NOT EXISTS transactions (
                 date TEXT, 
                 description TEXT, 
                 type TEXT, 
-                amount REAL, 
+                amount_usd REAL,
+                amount_lbp REAL,
+                total_usd REAL, 
                 fund TEXT, 
                 account_type TEXT, 
                 ref_name TEXT)''')
 
-# إدخل بيانات افتراضية إذا كانت الجداول فارغة
-c.execute("INSERT OR IGNORE INTO settings VALUES ('dollar_rate', '1.0')")
+# إدخال بيانات افتراضية إذا كانت الجداول فارغة
+c.execute("INSERT OR IGNORE INTO settings VALUES ('dollar_rate', '89500')")
 for fund_name in ["المسجد العامة", "الزكاة", "الصدقات", "المشاريع"]:
     c.execute("INSERT OR IGNORE INTO funds (name) VALUES (?)", (fund_name,))
 conn.commit()
@@ -44,50 +46,48 @@ conn.commit()
 st.sidebar.markdown("<h2 style='text-align: center; color: #D4AF37;'>🕌 إدارة المسجد</h2>", unsafe_allow_html=True)
 page = st.sidebar.radio("انتقل إلى:", ["🏠 الرئيسية (لوحة التحكم)", "📝 القيود اليومية", "💵 الصناديق", "👤 حساب الشيخ عبد الكريم", "👥 الرواتب", "📊 التقارير", "⚙️ الإعدادات"])
 
-# قراءة الإعدادات الحالية
+# قراءة إعداد سعر الصرف الحالي
 c.execute("SELECT value FROM settings WHERE key='dollar_rate'")
 dollar_rate = float(c.fetchone()[0])
 
 # --- 1. الصفحة الرئيسية ---
 if page == "🏠 الرئيسية (لوحة التحكم)":
-    st.markdown("<h1 style='text-align: center;'>لوحة التحكم المالية</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #C5A059;'>متابعة دقيقة لأرصدة وحسابات المسجد</p>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center;'>لوحة التحكم المالية (بالدولار)</h1>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align: center; color: #C5A059;'>سعر الصرف المعتمد حالياً: {dollar_rate:,.0f} ل.لبنانية للدولار</p>", unsafe_allow_html=True)
     st.write("---")
     
-    # حساب الإجماليات
+    # حساب الإجماليات بالدولار
     df_trans = pd.read_sql_query("SELECT * FROM transactions", conn)
     if not df_trans.empty:
-        total_in = df_trans[df_trans['type'] == 'قبض']['amount'].sum()
-        total_out = df_trans[df_trans['type'] == 'صرف']['amount'].sum()
+        total_in = df_trans[df_trans['type'] == 'قبض']['total_usd'].sum()
+        total_out = df_trans[df_trans['type'] == 'صرف']['total_usd'].sum()
     else:
         total_in, total_out = 0.0, 0.0
     current_balance = total_in - total_out
     
     col1, col2, col3 = st.columns(3)
-    col1.metric("💰 الرصيد الإجمالي الحالي", f"{current_balance:,.2f}")
-    col2.metric("🟢 إجمالي الإيرادات", f"{total_in:,.2f}")
-    col3.metric("🔴 إجمالي المصروفات", f"{total_out:,.2f}")
+    col1.metric("💰 الرصيد الإجمالي الحالي ($)", f"${current_balance:,.2f}")
+    col2.metric("🟢 إجمالي الإيرادات ($)", f"${total_in:,.2f}")
+    col3.metric("🔴 إجمالي المصروفات ($)", f"${total_out:,.2f}")
     
     st.write("---")
-    st.subheader("📌 أرصدة الصناديق الحالية")
-    # عرض سريع للصناديق
+    st.subheader("📌 أرصدة الصناديق الصافية بالدولار")
     df_funds = pd.read_sql_query("SELECT name FROM funds", conn)
     fund_balances = []
     for f in df_funds['name']:
-        f_in = df_trans[(df_trans['fund'] == f) & (df_trans['type'] == 'قبض')]['amount'].sum()
-        f_out = df_trans[(df_trans['fund'] == f) & (df_trans['type'] == 'صرف')]['amount'].sum()
-        fund_balances.append({"الصندوق": f, "الرصيد الحالي": f_in - f_out})
+        f_in = df_trans[(df_trans['fund'] == f) & (df_trans['type'] == 'قبض')]['total_usd'].sum()
+        f_out = df_trans[(df_trans['fund'] == f) & (df_trans['type'] == 'صرف')]['total_usd'].sum()
+        fund_balances.append({"الصندوق": f, "الرصيد الحالي بالدولار ($)": f"${f_in - f_out:,.2f}"})
     st.table(pd.DataFrame(fund_balances))
 
 # --- 2. القيود اليومية ---
 elif page == "📝 القيود اليومية":
-    st.title("📝 تسجيل القيود اليومية")
+    st.title("📝 تسجيل القيود اليومية (يدعم الدولار واللبناني)")
+    st.caption(f"💡 أي مبلغ بالليرة اللبنانية سيتم تحويله تلقائياً للدولار بناءً على السعر الحالي: {dollar_rate:,.0f} ل.ل")
     
-    # جلب الصناديق والموظفين للقوائم المنسدلة
     funds_list = [r[0] for r in c.execute("SELECT name FROM funds").fetchall()]
     emp_list = [r[0] for r in c.execute("SELECT name FROM employees").fetchall()]
     
-    # رقم السند التلقائي
     c.execute("SELECT MAX(id) FROM transactions")
     max_id = c.fetchone()[0]
     next_id = (max_id + 1) if max_id else 1
@@ -99,84 +99,93 @@ elif page == "📝 القيود اليومية":
         t_date = col1.date_input("التاريخ", datetime.now())
         t_type = col2.selectbox("نوع العملية", ["قبض", "صرف"])
         
-        amount = col1.number_input("المبلغ", min_value=0.0, step=50.0)
-        fund = col2.selectbox("الصندوق المتأثر", funds_list)
+        usd_amount = col1.number_input("المبلغ بالدولار ($)", min_value=0.0, step=10.0, value=0.0)
+        lbp_amount = col2.number_input("المبلغ بالليرة اللبنانية (ل.ل)", min_value=0.0, step=100000.0, value=0.0)
         
-        account_type = col1.selectbox("نوع الحساب", ["عام", "حساب الشيخ عبد الكريم", "رواتب الموظفين"])
+        fund = col1.selectbox("الصندوق المتأثر", funds_list)
+        account_type = col2.selectbox("نوع الحساب", ["عام", "حساب الشيخ عبد الكريم", "رواتب الموظفين"])
         
         ref_name = ""
         if account_type == "رواتب الموظفين":
-            ref_name = col2.selectbox("اختر الموظف", emp_list)
+            ref_name = st.selectbox("اختر الموظف", emp_list)
             
         description = st.text_area("البيان / تفاصيل القيد")
         
         submit = st.form_submit_button("حفظ السند")
         if submit:
-            if amount <= 0 or not description:
-                st.error("الرجاء إدخال مبلغ صحيح وبيان للعملية.")
+            if usd_amount == 0 and lbp_amount == 0:
+                st.error("الرجاء إدخل قيمة في حقل الدولار أو اللبناني على الأقل.")
+            elif not description:
+                st.error("الرجاء إدخال بيان للعملية.")
             else:
-                c.execute("INSERT INTO transactions (date, description, type, amount, fund, account_type, ref_name) VALUES (?,?,?,?,?,?,?)",
-                          (str(t_date), description, t_type, amount, fund, account_type, ref_name))
+                converted_lbp_to_usd = lbp_amount / dollar_rate
+                total_usd = usd_amount + converted_lbp_to_usd
+                
+                c.execute("""INSERT INTO transactions 
+                             (date, description, type, amount_usd, amount_lbp, total_usd, fund, account_type, ref_name) 
+                             VALUES (?,?,?,?,?,?,?,?,?)""",
+                          (str(t_date), description, t_type, usd_amount, lbp_amount, total_usd, fund, account_type, ref_name))
                 conn.commit()
-                st.success(f"تم حفظ السند رقم {next_id} بنجاح!")
-                st.rerun()
+                st.success(f"تم حفظ السند رقم {next_id} بنجاح! الإجمالي: ${total_usd:,.2f}")
+                st.experimental_rerun()
 
-    # عرض العمليات الأخيرة مع التلوين
     st.write("---")
     st.subheader("📋 القيود المسجلة مؤخراً")
-    df_all = pd.read_sql_query("SELECT id AS 'رقم السند', date AS 'التاريخ', description AS 'البيان', type AS 'النوع', amount AS 'المبلغ', fund AS 'الصندوق' FROM transactions ORDER BY id DESC", conn)
-    
-    def color_type(val):
-        color = '#e8f5e9' if val == 'قبض' else '#ffebee'
-        return f'background-color: {color}'
+    df_all = pd.read_sql_query("""SELECT id AS 'رقم السند', date AS 'التاريخ', description AS 'البيان', 
+                                  type AS 'النوع', amount_usd AS 'دولار $', amount_lbp AS 'لبناني ل.ل', 
+                                  total_usd AS 'الإجمالي ($)', fund AS 'الصندوق' 
+                                  FROM transactions ORDER BY id DESC""", conn)
     
     if not df_all.empty:
-        st.dataframe(df_all.style.applymap(color_type, subset=['النوع']))
+        # هنا تم تعديل طريقة العرض لتجنب الخطأ البرمجي وعرض الأرقام بشكل أنيق جداً
+        st.dataframe(df_all, use_container_width=True)
     else:
         st.caption("لا توجد قيود مسجلة بعد.")
 
 # --- 3. الصناديق ---
 elif page == "💵 الصناديق":
-    st.title("💵 إدارة أرصدة الصناديق")
+    st.title("💵 إدارة أرصدة الصناديق (بالدولار)")
     df_trans = pd.read_sql_query("SELECT * FROM transactions", conn)
     df_funds = pd.read_sql_query("SELECT name FROM funds", conn)
     
     records = []
     for f in df_funds['name']:
-        f_in = df_trans[(df_trans['fund'] == f) & (df_trans['type'] == 'قبض')]['amount'].sum()
-        f_out = df_trans[(df_trans['fund'] == f) & (df_trans['type'] == 'صرف')]['amount'].sum()
+        f_in = df_trans[(df_trans['fund'] == f) & (df_trans['type'] == 'قبض')]['total_usd'].sum()
+        f_out = df_trans[(df_trans['fund'] == f) & (df_trans['type'] == 'صرف')]['total_usd'].sum()
         records.append({
             "اسم الصندوق": f,
-            "إجمالي القبض (+)": f_in,
-            "إجمالي الصرف (-)": f_out,
-            "الرصيد الحالي": f_in - f_out
+            "إجمالي القبض ($)": f_in,
+            "إجمالي الصرف ($)": f_out,
+            "الرصيد الصافي ($)": f_in - f_out
         })
     st.table(pd.DataFrame(records))
 
 # --- 4. حساب الشيخ عبد الكريم ---
 elif page == "👤 حساب الشيخ عبد الكريم":
-    st.title("👤 كشف حساب الشيخ عبد الكريم مع المسجد")
+    st.title("👤 كشف حساب الشيخ عبد الكريم مع المسجد (بالدولار)")
     
-    df_sheikh = pd.read_sql_query("SELECT date AS 'التاريخ', description AS 'البيان', type AS 'النوع', amount AS 'المبلغ' FROM transactions WHERE account_type='حساب الشيخ عبد الكريم'", conn)
+    df_sheikh = pd.read_sql_query("""SELECT date AS 'التاريخ', description AS 'البيان', type AS 'النوع', 
+                                     amount_usd AS 'دولار', amount_lbp AS 'لبناني', total_usd AS 'الإجمالي ($)' 
+                                     FROM transactions WHERE account_type='حساب الشيخ عبد الكريم'""", conn)
     
-    sheikh_in = df_sheikh[df_sheikh['النوع'] == 'قبض']['المبلغ'].sum()
-    sheikh_out = df_sheikh[df_sheikh['النوع'] == 'صرف']['المبلغ'].sum()
+    sheikh_in = df_sheikh[df_sheikh['النوع'] == 'قبض']['الإجمالي ($)'].sum()
+    sheikh_out = df_sheikh[df_sheikh['النوع'] == 'صرف']['الإجمالي ($)'].sum()
     
     final_status = sheikh_in - sheikh_out
     
     if final_status > 0:
-        st.success(f"⚖️ ميزان الحساب: **المسجد مدين لك بمبلغ {abs(final_status):,.2f}** (لك على المسجد)")
+        st.success(f"⚖️ ميزان الحساب: **المسجد مدين لك بمبلغ ${abs(final_status):,.2f}** (لك على المسجد)")
     elif final_status < 0:
-        st.warning(f"⚖️ ميزان الحساب: **أنت مدين للمسجد بمبلغ {abs(final_status):,.2f}** (عليك للمسجد)")
+        st.warning(f"⚖️ ميزان الحساب: **أنت مدين للمسجد بمبلغ ${abs(final_status):,.2f}** (عليك للمسجد)")
     else:
-        st.info("⚖️ ميزان الحساب: الحساب متقاص تماماً (0.00)")
+        st.info("⚖️ ميزان الحساب: الحساب متقاص تماماً ($0.00)")
         
     st.write("---")
-    st.dataframe(df_sheikh)
+    st.dataframe(df_sheikh, use_container_width=True)
 
 # --- 5. الرواتب ---
 elif page == "👥 الرواتب":
-    st.title("👥 رواتب الموظفين والعاملين")
+    st.title("👥 رواتب الموظفين والعاملين (بالدولار)")
     
     df_emps = pd.read_sql_query("SELECT name, salary FROM employees", conn)
     df_trans = pd.read_sql_query("SELECT * FROM transactions WHERE account_type='رواتب الموظفين'", conn)
@@ -185,12 +194,12 @@ elif page == "👥 الرواتب":
     for idx, row in df_emps.iterrows():
         emp_name = row['name']
         required = row['salary']
-        paid = df_trans[(df_trans['ref_name'] == emp_name) & (df_trans['type'] == 'صرف')]['amount'].sum()
+        paid = df_trans[(df_trans['ref_name'] == emp_name) & (df_trans['type'] == 'صرف')]['total_usd'].sum()
         emp_records.append({
             "اسم الموظف": emp_name,
-            "الراتب المستحق": required,
-            "المدفوع": paid,
-            "المتبقي": required - paid
+            "الراتب المستحق ($)": required,
+            "المدفوع إجمالاً ($)": paid,
+            "المتبقي ($)": required - paid
         })
         
     if emp_records:
@@ -226,15 +235,14 @@ elif page == "📊 التقارير":
 elif page == "⚙️ الإعدادات":
     st.title("⚙️ الإعدادات العامة للنظام")
     
-    # 1. سعر الصرف
-    new_rate = st.number_input("سعر صرف الدولار الحالي", value=dollar_rate, step=0.1)
+    new_rate = st.number_input("سعر صرف الدولار الحالي مقابل الليرة اللبنانية (مثال: 89500)", value=dollar_rate, step=500.0)
     if st.button("تحديث سعر الصرف"):
         c.execute("UPDATE settings SET value=? WHERE key='dollar_rate'", (str(new_rate),))
         conn.commit()
-        st.success("تم تحديث السعر!")
+        st.success(f"تم تحديث السعر بنجاح إلى: {new_rate:,.0f} ل.ل")
+        st.experimental_rerun()
         
     st.write("---")
-    # 2. إضافة صندوق
     st.subheader("➕ إضافة صندوق جديد")
     new_fund = st.text_input("اسم الصندوق الجديد")
     if st.button("حفظ الصندوق"):
@@ -243,19 +251,18 @@ elif page == "⚙️ الإعدادات":
                 c.execute("INSERT INTO funds (name) VALUES (?)", (new_fund,))
                 conn.commit()
                 st.success(f"تمت إضافة صندوق {new_fund}")
-                st.rerun()
+                st.experimental_rerun()
             except:
                 st.error("الصندوق موجود مسبقاً")
                 
     st.write("---")
-    # 3. إضافة موظف
     st.subheader("➕ إضافة موظف جديد")
     col1, col2 = st.columns(2)
     emp_name = col1.text_input("اسم الموظف")
-    emp_salary = col2.number_input("الراتب الشهري", min_value=0.0)
+    emp_salary = col2.number_input("الراتب الشهري الافتراضي ($)", min_value=0.0)
     if st.button("حفظ الموظف"):
         if emp_name:
             c.execute("INSERT INTO employees (name, salary) VALUES (?,?)", (emp_name, emp_salary))
             conn.commit()
             st.success(f"تمت إضافة الموظف {emp_name}")
-            st.rerun()
+            st.experimental_rerun()
