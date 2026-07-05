@@ -23,7 +23,7 @@ c = conn.cursor()
 
 c.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)")
 c.execute("CREATE TABLE IF NOT EXISTS funds (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE)")
-c.execute("CREATE TABLE IF NOT EXISTS employees (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, salary REAL)")
+c.execute("CREATE TABLE IF NOT EXISTS employees (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, salary REAL)")
 c.execute("CREATE TABLE IF NOT EXISTS transactions (id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, description TEXT, type TEXT, amount_usd REAL, amount_lbp REAL, total_usd REAL, fund TEXT, account_type TEXT, ref_name TEXT)")
 
 c.execute("INSERT OR IGNORE INTO settings VALUES ('dollar_rate', '89500')")
@@ -56,7 +56,6 @@ if page == "🏠 الرئيسية (لوحة التحكم)":
     current_balance = total_in - total_out
     
     col1, col2, col3 = st.columns(3)
-    # استخدام تنسيق 정수 (بدون فواصل عشرية) هنا: :.0f
     col1.metric("💰 الرصيد الإجمالي الحالي ($)", f"${current_balance:,.0f}")
     col2.metric("🟢 إجمالي الإيرادات ($)", f"${total_in:,.0f}")
     col3.metric("🔴 إجمالي المصروفات ($)", f"${total_out:,.0f}")
@@ -68,7 +67,6 @@ if page == "🏠 الرئيسية (لوحة التحكم)":
     for f in df_funds['name']:
         f_in = df_trans[(df_trans['fund'] == f) & (df_trans['type'] == 'قبض')]['total_usd'].sum()
         f_out = df_trans[(df_trans['fund'] == f) & (df_trans['type'] == 'صرف')]['total_usd'].sum()
-        # عرض بدون فواصل
         fund_balances.append({"الصندوق": f, "الرصيد الحالي بالدولار ($)": f"${(f_in - f_out):,.0f}"})
     st.table(pd.DataFrame(fund_balances))
 
@@ -89,17 +87,15 @@ elif page == "📝 القيود اليومية":
     t_date = col1.date_input("التاريخ", datetime.now())
     t_type = col2.selectbox("نوع العملية", ["قبض", "صرف"])
     
-    # تحويل الخطوات لتكون أرقاماً صحيحة تماماً
     usd_amount = col1.number_input("المبلغ بالدولار", min_value=0.0, step=1.0, value=0.0, key="usd_input")
     lbp_amount = col2.number_input("المبلغ بالليرة اللبنانية", min_value=0.0, step=1000.0, value=0.0, key="lbp_input")
     
-    # تقريب ناتج الحسبة فوراً لأقرب رقم صحيح لمنع ظهور الكسر 111.
     converted_instant = round(lbp_amount / dollar_rate) if dollar_rate > 0 else 0
     total_calculated_usd = round(usd_amount + converted_instant)
     
     if lbp_amount > 0 or usd_amount > 0:
         st.warning(f"""
-        📊 معاينة الحسبة الحالية (أرقام صحيحة بدون فواصل):
+        📊 معاينة الحسبة الحالية (بدون فواصل):
         - قيمة اللبناني بالدولار: {converted_instant:,.0f} دولار
         - المبلغ الإضافي بالدولار: {usd_amount:,.0f} دولار
         - إجمالي السند بالكامل: {total_calculated_usd:,.0f} دولار
@@ -110,13 +106,18 @@ elif page == "📝 القيود اليومية":
     
     ref_name = ""
     if account_type == "رواتب الموظفين":
-        ref_name = st.selectbox("اختر الموظف", emp_list)
+        if emp_list:
+            ref_name = st.selectbox("اختر الموظف", emp_list)
+        else:
+            st.error("⚠️ لا يوجد موظفون مسجلون لتحديدهم. اذهب لصفحة الرواتب أولاً لإضافة الموظفين.")
         
     description = st.text_area("البيان / تفاصيل القيد")
     
     if st.button("حفظ السند المالي"):
         if usd_amount == 0 and lbp_amount == 0:
             st.error("الرجاء إدخال قيمة في حقل الدولار أو اللبناني على الأقل.")
+        elif account_type == "رواتب الموظفين" and not ref_name:
+            st.error("الرجاء تحديد موظف مسجل أولاً أو إضافة موظفين في صفحة الرواتب.")
         elif not description:
             st.error("الرجاء إدخال بيان للعملية.")
         else:
@@ -130,8 +131,6 @@ elif page == "📝 القيود اليومية":
 
     st.write("---")
     st.subheader("📋 القيود المسجلة مؤخراً")
-    
-    # تقريب الأرقام في الجدول أثناء العرض لتبدو نظيفة ومريحة
     df_all = pd.read_sql_query("""SELECT id AS 'رقم السند', date AS 'التاريخ', description AS 'البيان', 
                                   type AS 'النوع', CAST(amount_usd AS INT) AS 'دولار', CAST(amount_lbp AS INT) AS 'لبناني', 
                                   CAST(total_usd AS INT) AS 'الإجمالي ($)', fund AS 'الصندوق' 
@@ -159,35 +158,66 @@ elif page == "💵 الصناديق":
 # --- 4. حساب الشيخ عبد الكريم ---
 elif page == "👤 حساب الشيخ عبد الكريم":
     st.title("👤 كشف حساب الشيخ عبد الكريم")
-    df_sheikh = pd.read_sql_query("SELECT date AS 'التاريخ', description AS 'البيان', type AS 'النوع', CAST(amount_usd AS INT) AS 'دولار', CAST(amount_lbp AS INT) AS 'لبناني', CAST(total_usd AS INT) AS 'الإجمالي ($)' FROM transactions WHERE account_type='حساب الشيخ عبد الكريم'", conn)
     
-    # حساب الصافي بالأرقام الصحيحة
     df_trans = pd.read_sql_query("SELECT * FROM transactions WHERE account_type='حساب الشيخ عبد الكريم'", conn)
     sheikh_in = df_trans[df_trans['type'] == 'قبض']['total_usd'].sum()
     sheikh_out = df_trans[df_trans['type'] == 'صرف']['total_usd'].sum()
     final_status = sheikh_in - sheikh_out
     
-    if final_status > 0: st.success(f"⚖️ ميزان الحساب: المسجد مدين لك بمبلغ {final_status:,.0f} دولار")
-    elif final_status < 0: st.warning(f"⚖️ ميزان الحساب: أنت مدين للمسجد بمبلغ {abs(final_status):,.0f} دولار")
-    else: st.info("⚖️ ميزان الحساب: الحساب متقاص تماماً ($0)")
-    st.dataframe(df_sheikh, use_container_width=True)
+    if final_status > 0: 
+        st.success(f"⚖️ ميزان الحساب: المسجد مدين لك بمبلغ {final_status:,.0f} دولار")
+    elif final_status < 0: 
+        st.warning(f"⚖️ ميزان الحساب: أنت مدين للمسجد بمبلغ {abs(final_status):,.0f} دولار")
+    else: 
+        st.info("⚖️ ميزان الحساب: الحساب متقاص تماماً ($0)")
+        
+    df_sheikh = pd.read_sql_query("SELECT date AS 'التاريخ', description AS 'البيان', type AS 'النوع', CAST(amount_usd AS INT) AS 'دولار', CAST(amount_lbp AS INT) AS 'لبناني', CAST(total_usd AS INT) AS 'الإجمالي ($)' FROM transactions WHERE account_type='حساب الشيخ عبد الكريم' ORDER BY id DESC", conn)
+    
+    if df_sheikh.empty:
+        st.info("💡 لا توجد عمليات مسجلة على هذا الحساب حتى الآن. عندما تقوم بإضافة قيد يومي وتختار نوع الحساب (حساب الشيخ عبد الكريم)، سيظهر هنا فوراً.")
+    else:
+        st.dataframe(df_sheikh, use_container_width=True)
 
 # --- 5. الرواتب ---
 elif page == "👥 الرواتب":
     st.title("👥 رواتب الموظفين والعاملين")
-    df_emps = pd.read_sql_query("SELECT name, salary FROM employees", conn)
-    df_trans = pd.read_sql_query("SELECT * FROM transactions WHERE account_type='رواتب الموظفين'", conn)
     
-    emp_records = []
-    for idx, row in df_emps.iterrows():
-        paid = df_trans[(df_trans['ref_name'] == row['name']) & (df_trans['type'] == 'صرف')]['total_usd'].sum()
-        emp_records.append({
-            "اسم الموظف": row['name'],
-            "الراتب المستحق ($)": f"{row['salary']:,.0f}",
-            "المدفوع إجمالاً ($)": f"{paid:,.0f}",
-            "المتبقي ($)": f"{(row['salary'] - paid):,.0f}"
-        })
-    st.table(pd.DataFrame(emp_records))
+    st.subheader("📝 إضافة موظف جديد أو تعديل راتبه")
+    col_name, col_sal, col_btn = st.columns([2, 1, 1])
+    
+    emp_name = col_name.text_input("اسم الموظف / العامل كاملاً")
+    emp_salary = col_sal.number_input("الراتب الشهري ($)", min_value=0, step=50, value=0)
+    
+    col_btn.markdown("<br>", unsafe_allow_html=True)
+    if col_btn.button("حفظ البيانات"):
+        if emp_name:
+            c.execute("INSERT OR REPLACE INTO employees (name, salary) VALUES (?, ?)", (emp_name, emp_salary))
+            conn.commit()
+            st.success(f"تم حفظ الموظف {emp_name}!")
+            st.rerun()
+        else:
+            st.error("يرجى كتابة الاسم.")
+
+    st.write("---")
+    st.subheader("📋 جدول الرواتب الحالي")
+    
+    df_emps = pd.read_sql_query("SELECT name, salary FROM employees", conn)
+    
+    if df_emps.empty:
+        st.info("💡 لا يوجد موظفون مسجلون بعد. يرجى تعبئة الحقول أعلاه والضغط على (حفظ البيانات) لإضافة أول موظف.")
+    else:
+        df_trans = pd.read_sql_query("SELECT * FROM transactions WHERE account_type='رواتب الموظفين'", conn)
+        
+        emp_records = []
+        for idx, row in df_emps.iterrows():
+            paid = df_trans[(df_trans['ref_name'] == row['name']) & (df_trans['type'] == 'صرف')]['total_usd'].sum()
+            emp_records.append({
+                "اسم الموظف": row['name'],
+                "الراتب المستحق ($)": f"{row['salary']:,.0f}",
+                "المدفوع إجمالاً ($)": f"{paid:,.0f}",
+                "المتبقي ($)": f"{(row['salary'] - paid):,.0f}"
+            })
+        st.table(pd.DataFrame(emp_records))
 
 # --- 6. التقارير ---
 elif page == "📊 التقارير":
@@ -205,6 +235,20 @@ elif page == "📊 التقارير":
 # --- 7. الإعدادات ---
 elif page == "⚙️ الإعدادات":
     st.title("⚙️ الإعدادات العامة للنظام")
+    new_rate = st.number_input("سعر صرف الدولار الحالي مقابل الليرة اللبنانية (مثال: 89500)", value=dollar_rate, step=500.0)
+    if st.button("تحديث سعر الصرف"):
+        c.execute("UPDATE settings SET value=? WHERE key='dollar_rate'", (str(new_rate),))
+        conn.commit()
+        st.success(f"تم تحديث السعر بنجاح إلى: {new_rate:,.0f} ل.ل")
+        st.rerun()
+    st.write("---")
+    st.subheader("🚨 منطقة الخطر (إعادة تعيين قاعدة البيانات)")
+    if st.button("🧹 تصفير وحذف جميع السندات المخربطة"):
+        c.execute("DROP TABLE IF EXISTS transactions")
+        c.execute("UPDATE settings SET value='89500' WHERE key='dollar_rate'")
+        conn.commit()
+        st.success("تم تصفير قاعدة البيانات بنجاح وإعادة ضبط سعر الصرف إلى 89500.")
+        st.rerun()
     new_rate = st.number_input("سعر صرف الدولار الحالي مقابل الليرة اللبنانية (مثال: 89500)", value=dollar_rate, step=500.0)
     if st.button("تحديث سعر الصرف"):
         c.execute("UPDATE settings SET value=? WHERE key='dollar_rate'", (str(new_rate),))
