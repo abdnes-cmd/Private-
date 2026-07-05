@@ -34,7 +34,7 @@ c.execute('''CREATE TABLE IF NOT EXISTS transactions (
                 account_type TEXT, 
                 ref_name TEXT)''')
 
-# إدخال بيانات افتراضية إذا كانت الجداول فارغة
+# إدخل بيانات افتراضية إذا كانت الجداول فارغة
 c.execute("INSERT OR IGNORE INTO settings VALUES ('dollar_rate', '1.0')")
 for fund_name in ["المسجد العامة", "الزكاة", "الصدقات", "المشاريع"]:
     c.execute("INSERT OR IGNORE INTO funds (name) VALUES (?)", (fund_name,))
@@ -110,7 +110,7 @@ elif page == "📝 القيود اليومية":
             
         description = st.text_area("البيان / تفاصيل القيد")
         
-        submit = st.form_submit_command("حفظ السند")
+        submit = st.form_submit_button("حفظ السند")
         if submit:
             if amount <= 0 or not description:
                 st.error("الرجاء إدخال مبلغ صحيح وبيان للعملية.")
@@ -159,8 +159,8 @@ elif page == "👤 حساب الشيخ عبد الكريم":
     
     df_sheikh = pd.read_sql_query("SELECT date AS 'التاريخ', description AS 'البيان', type AS 'النوع', amount AS 'المبلغ' FROM transactions WHERE account_type='حساب الشيخ عبد الكريم'", conn)
     
-    sheikh_in = df_sheikh[df_sheikh['النوع'] == 'قبض']['المبلغ'].sum() # ما قبضه المسجد من الشيخ (له)
-    sheikh_out = df_sheikh[df_sheikh['النوع'] == 'صرف']['المبلغ'].sum() # ما صرفه المسجد للشيخ (عليه)
+    sheikh_in = df_sheikh[df_sheikh['النوع'] == 'قبض']['المبلغ'].sum()
+    sheikh_out = df_sheikh[df_sheikh['النوع'] == 'صرف']['المبلغ'].sum()
     
     final_status = sheikh_in - sheikh_out
     
@@ -252,7 +252,7 @@ elif page == "⚙️ الإعدادات":
     st.subheader("➕ إضافة موظف جديد")
     col1, col2 = st.columns(2)
     emp_name = col1.text_input("اسم الموظف")
-    emp_salary = col2.number_index = col2.number_input("الراتب الشهري", min_value=0.0)
+    emp_salary = col2.number_input("الراتب الشهري", min_value=0.0)
     if st.button("حفظ الموظف"):
         if emp_name:
             c.execute("INSERT INTO employees (name, salary) VALUES (?,?)", (emp_name, emp_salary))
