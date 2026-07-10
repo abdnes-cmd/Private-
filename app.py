@@ -7,52 +7,49 @@ import os
 # إعدادات الصفحة والهوية البصرية (الأخضر والذهبي)
 st.set_page_config(page_title="النظام المالي للمسجد", page_icon="🕌", layout="wide")
 
-# تصميم مخصص بالألوان المطلوبة وتعديل اتجاه وتلوين الجداول
+# تصميم مخصص بالألوان المطلوبة وتعديل اتجاه وتلوين الواجهة
 st.markdown("""
     <style>
     .main { background-color: #f9fbf9; }
-    h1, h2, h3 { color: #004D40; font-family: 'Cairo', sans-serif; text-align: right; }
-    .stButton>button { background-color: #004D40; color: #D4AF37; border-radius: 5px; }
+    h1, h2, h3, h4 { color: #004D40; font-family: 'Cairo', sans-serif; text-align: right; direction: rtl; }
+    .stButton>button { background-color: #004D40; color: #D4AF37; border-radius: 5px; font-weight: bold; width: 100%; }
     .stButton>button:hover { background-color: #D4AF37; color: #004D40; }
-    .reportview-container .main .block-container{ padding-top: 2rem; }
     
-    /* تنسيق وعكس اتجاه الجداول من اليمين إلى اليسار وتلوينها */
-    div[data-testid="stTable"] table {
-        direction: rtl !important;
-        text-align: right !important;
+    /* تنسيق جداول الـ HTML المخصصة لضمان عدم انهيار التطبيق */
+    .custom-table {
         width: 100%;
         border-collapse: collapse;
+        direction: rtl;
+        text-align: right;
+        margin-bottom: 20px;
+        border: 1px solid #e0e0e0;
     }
-    div[data-testid="stTable"] th {
-        text-align: right !important;
-        padding: 12px !important;
-        font-size: 16px !important;
+    .custom-table th {
+        padding: 12px;
+        font-size: 16px;
         border: 1px solid #00332a;
     }
-    div[data-testid="stTable"] td {
-        text-align: right !important;
-        padding: 12px !important;
-        border: 1px solid #e0e0e0;
-        font-size: 15px !important;
-    }
-    
-    /* تلوين أعمدة الترويسة بشكل تبادلي */
-    div[data-testid="stTable"] th:nth-child(odd) {
+    /* تلوين أعمدة الترويسة بشكل تبادلي (أخضر ثم ذهبي) */
+    .custom-table th:nth-child(odd) {
         background-color: #004D40 !important;
         color: #D4AF37 !important;
     }
-    div[data-testid="stTable"] th:nth-child(even) {
+    .custom-table th:nth-child(even) {
         background-color: #C5A059 !important;
         color: #FFFFFF !important;
     }
-    
-    /* تلوين أسطر الجدول بشكل تبادلي */
-    div[data-testid="stTable"] td:nth-child(odd) {
+    .custom-table td {
+        padding: 12px;
+        border: 1px solid #e0e0e0;
+        font-size: 15px;
+    }
+    /* تلوين أسطر الجدول بشكل تبادلي (أخضر فاتح ثم أصفر فاتح) */
+    .custom-table td:nth-child(odd) {
         background-color: #e8f5e9 !important;
         color: #004D40 !important;
         font-weight: bold;
     }
-    div[data-testid="stTable"] td:nth-child(even) {
+    .custom-table td:nth-child(even) {
         background-color: #fefde8 !important;
         color: #b45309 !important;
     }
@@ -89,7 +86,21 @@ st.sidebar.markdown("<h2 style='text-align: center; color: #D4AF37; margin-top: 
 st.sidebar.markdown("<p style='text-align: center; color: #004D40; font-weight: bold;'>مجدل عنجر</p>", unsafe_allow_html=True)
 st.sidebar.markdown("</div>", unsafe_allow_html=True)
 
-page = st.sidebar.radio("انتقل إلى:", ["🏠 الرئيسية (لوحة التحكم)", "📝 القيود اليومية", "💵 الصناديق", "👤 حساب الشيخ عبد الكريم", "👥 الرواتب", "📊 التقارير", "⚙️ الإعدادات"], key="side_nav_v21")
+page = st.sidebar.radio("انتقل إلى:", ["🏠 الرئيسية (لوحة التحكم)", "📝 القيود اليومية", "💵 الصناديق", "👤 حساب الشيخ عبد الكريم", "👥 الرواتب", "📊 التقارير", "⚙️ الإعدادات"], key="side_navigation_v22")
+
+# دالة مساعدة لإنشاء جداول HTML مستقرة لمنع انهيار السيرفر
+def render_custom_html_table(headers, rows):
+    html = "<table class='custom-table'><thead><tr>"
+    for header in headers:
+        html += f"<th>{header}</th>"
+    html += "</tr></thead><tbody>"
+    for row in rows:
+        html += "<tr>"
+        for cell in row:
+            html += f"<td>{cell}</td>"
+        html += "</tr>"
+    html += "</tbody></table>"
+    st.markdown(html, unsafe_allow_html=True)
 
 # --- 1. الصفحة الرئيسية ---
 if page == "🏠 الرئيسية (لوحة التحكم)":
@@ -112,8 +123,8 @@ if page == "🏠 الرئيسية (لوحة التحكم)":
     
     st.write("---")
     
-    # 📋 الجدول 1: ملخص الرواتب
-    st.subheader("👥 ملخص رواتب الموظفين والعاملين ($)")
+    # 📋 الجدول 1: ملخص الرواتب للموظفين
+    st.subheader("👥 ملخص رواتب وحسابات الموظفين والعاملين ($)")
     df_emps_db = pd.read_sql_query("SELECT name, salary FROM employees", conn)
     emp_salaries_dict = pd.Series(df_emps_db.salary.values, index=df_emps_db.name).to_dict() if not df_emps_db.empty else {}
     
@@ -123,43 +134,54 @@ if page == "🏠 الرئيسية (لوحة التحكم)":
     all_distinct_workers = list(set(list(emp_salaries_dict.keys()) + distinct_ref_names))
     
     if not all_distinct_workers:
-        st.info("💡 لا توجد بيانات موظفين مسجلة.")
+        st.info("💡 لا توجد بيانات موظفين مسجلة حتى الآن.")
     else:
-        worker_report_data = []
+        headers = ["اسم الموظف / العامل", "الراتب المستحق ($)", "إجمالي ما تم صرفه ($)", "المتبقي له في الذمة ($)"]
+        rows = []
         for worker in all_distinct_workers:
             assigned_salary = emp_salaries_dict.get(worker, 0.0)
             amount_paid = df_trans[(df_trans['account_type'] == 'رواتب الموظفين') & (df_trans['ref_name'] == worker) & (df_trans['type'] == 'صرف')]['total_usd'].sum() if not df_trans.empty else 0.0
             amount_remaining = assigned_salary - amount_paid
             display_name = worker if worker in emp_salaries_dict else f"{worker} (اسم محذوف)"
-            worker_report_data.append({
-                "اسم الموظف": display_name,
-                "الراتب المستحق ($)": f"${assigned_salary:,.0f}",
-                "إجمالي ما تم صرفه له ($)": f"${amount_paid:,.0f}",
-                "المتبقي له في الذمة ($)": f"${amount_remaining:,.0f}"
-            })
-        st.table(pd.DataFrame(worker_report_data))
+            rows.append([display_name, f"${assigned_salary:,.0f}", f"${amount_paid:,.0f}", f"${amount_remaining:,.0f}"])
+        render_custom_html_table(headers, rows)
         
     st.write("---")
     
-    # 📌 الجدول 2: أرصدة الصناديق
+    # 📊 الجدول 2: ملخص المصروفات التشغيلية
+    st.subheader("🚰 ملخص المصروفات التشغيلية والأخرى ($)")
+    if df_trans.empty or df_trans[df_trans['type'] == 'صرف'].empty:
+        st.info("💡 لا توجد مصروفات مسجلة بعد.")
+    else:
+        df_ops = df_trans[(df_trans['type'] == 'صرف') & (df_trans['account_type'] == 'عام')]
+        if df_ops.empty:
+            st.info("💡 لا توجد مصروفات عامة مسجلة حتى الآن.")
+        else:
+            df_ops_grouped = df_ops.groupby('description')['total_usd'].sum().reset_index()
+            headers = ["نوع المصروف / البيان", "إجمالي المبلغ المصروف ($)"]
+            rows = [[row['description'], f"${row['total_usd']:,.0f}"] for _, row in df_ops_grouped.iterrows()]
+            render_custom_html_table(headers, rows)
+
+    st.write("---")
+    
+    # 📌 الجدول 3: أرصدة الصناديق والذمم
     st.subheader("📌 أرصدة الصناديق الصافية والذمم المالية ($)")
     df_funds = pd.read_sql_query("SELECT name FROM funds", conn)
     sheikh_personal_in = df_trans[(df_trans['account_type'] == 'حساب الشيخ عبد الكريم') & (df_trans['type'] == 'قبض')]['total_usd'].sum() if not df_trans.empty else 0.0
     sheikh_personal_out = df_trans[(df_trans['account_type'] == 'حساب الشيخ عبد الكريم') & (df_trans['type'] == 'صرف')]['total_usd'].sum() if not df_trans.empty else 0.0
 
-    fund_balances = []
+    headers = ["الصندوق أو الحساب المالي", "الحالة المالية والاتزان ($)"]
+    rows = []
     for f in df_funds['name']:
-        f_in = df_trans[(df_trans['fund'] == f) & (df_trans['type'] == 'قبض')]['total_usd'].sum() if not df_trans.empty else 0.0
-        f_out = df_trans[(df_trans['fund'] == f) & (df_trans['type'] == 'صرف')]['total_usd'].sum() if not df_trans.empty else 0.0
-        current_bal = f_in - f_out
-
         if f == "ذمة وسلف الشيخ عبد الكريم":
             net_sheikh_status = sheikh_personal_in - sheikh_personal_out
-            status_text = f"${net_sheikh_status:,.0f} (دائن)" if net_sheikh_status > 0 else (f"${abs(net_sheikh_status):,.0f} (مدين)" if net_sheikh_status < 0 else "$0")
-            fund_balances.append({"الصندوق": "👤 ذمة الشيخ", "الحالة": status_text})
+            status_text = f"${net_sheikh_status:,.0f} (مستحق لك - دائن)" if net_sheikh_status > 0 else (f"${abs(net_sheikh_status):,.0f} (مطلوب منك - مدين)" if net_sheikh_status < 0 else "$0 (مسدد تماماً)")
+            rows.append(["👤 ذمة وسلف الشيخ عبد الكريم", status_text])
         else:
-            fund_balances.append({"الصندوق": f, "الحالة": f"${current_bal:,.0f}"})
-    st.table(pd.DataFrame(fund_balances))
+            f_in = df_trans[(df_trans['fund'] == f) & (df_trans['type'] == 'قبض')]['total_usd'].sum() if not df_trans.empty else 0.0
+            f_out = df_trans[(df_trans['fund'] == f) & (df_trans['type'] == 'صرف')]['total_usd'].sum() if not df_trans.empty else 0.0
+            rows.append([f, f"${(f_in - f_out):,.0f}"])
+    render_custom_html_table(headers, rows)
 
 # --- 2. القيود اليومية ---
 elif page == "📝 القيود اليومية":
@@ -171,135 +193,30 @@ elif page == "📝 القيود اليومية":
     st.info(f"رقم السند التلقائي القادم: {(max_id + 1) if max_id else 1}")
     
     col1, col2 = st.columns(2)
-    t_date = col1.date_input("التاريخ", datetime.now())
-    t_type = col2.selectbox("نوع العملية", ["قبض", "صرف"])
-    usd_amount = col1.number_input("المبلغ ($)", min_value=0.0, step=1.0)
-    lbp_amount = col2.number_input("المبلغ (ل.ل)", min_value=0.0, step=1000.0)
+    t_date = col1.date_input("التاريخ", datetime.now(), key="q_date_v22")
+    t_type = col2.selectbox("نوع العملية", ["قبض", "صرف"], key="q_type_v22")
+    usd_amount = col1.number_input("المبلغ بالدولار ($)", min_value=0.0, step=1.0, key="q_usd_v22")
+    lbp_amount = col2.number_input("المبلغ بالليرة (ل.ل)", min_value=0.0, step=1000.0, key="q_lbp_v22")
     
     converted_instant = round(lbp_amount / dollar_rate) if dollar_rate > 0 else 0
     total_calculated_usd = round(usd_amount + converted_instant)
     
     if lbp_amount > 0:
-        st.warning(f"📊 قيمة المبلغ بالليرة تعادل: {converted_instant:,.0f}$")
+        st.warning(f"📊 قيمة الليرة تعادل: {converted_instant:,.0f}$")
         
-    fund = col1.selectbox("الصندوق", funds_list)
-    account_type = col2.selectbox("نوع الحساب", ["عام", "حساب الشيخ عبد الكريم", "رواتب الموظفين"])
+    fund = col1.selectbox("الصندوق المتأثر", funds_list, key="q_fund_v22")
+    account_type = col2.selectbox("نوع الحساب", ["عام", "حساب الشيخ عبد الكريم", "رواتب الموظفين"], key="q_acc_type_v22")
     
     ref_name = ""
     if account_type == "رواتب الموظفين":
-        if emp_list: ref_name = st.selectbox("اختر الموظف", emp_list)
-        else: st.error("⚠️ لا يوجد موظفون.")
+        if emp_list: ref_name = st.selectbox("اختر الموظف", emp_list, key="q_emp_v22")
+        else: st.error("⚠️ لا يوجد موظفون مسجلون.")
         
-    description = st.text_area("البيان")
+    description = st.text_area("البيان / التفاصيل", key="q_desc_v22")
     
-    if st.button("حفظ السند"):
-        if total_calculated_usd == 0: st.error("أدخل مبلغاً.")
-        elif not description: st.error("أدخل بياناً.")
+    if st.button("حفظ السند المالي", key="q_save_btn_v22"):
+        if total_calculated_usd == 0: st.error("الرجاء إدخال قيمة مالية.")
+        elif not description: st.error("الرجاء إدخال البيان.")
         else:
             c.execute("INSERT INTO transactions (date, description, type, amount_usd, amount_lbp, total_usd, fund, account_type, ref_name) VALUES (?,?,?,?,?,?,?,?,?)",
-                      (str(t_date), description, t_type, usd_amount, lbp_amount, total_calculated_usd, fund, account_type, ref_name))
-            conn.commit()
-            st.success("تم الحفظ!")
-            st.rerun()
-
-# --- 3. الصناديق ---
-elif page == "💵 الصناديق":
-    st.title("💵 إدارة وتفاصيل أرصدة الصناديق")
-    st.markdown("### 🔍 تفاصيل المصروفات")
-    df_trans = pd.read_sql_query("SELECT * FROM transactions WHERE type='صرف'", conn)
-    df_funds = pd.read_sql_query("SELECT name FROM funds", conn)
-    
-    if df_trans.empty:
-        st.info("💡 لا توجد مصروفات.")
-    else:
-        for f in df_funds['name']:
-            st.markdown(f"#### 📦 صندوق: {f}")
-            df_f_spend = df_trans[df_trans['fund'] == f]
-            if df_f_spend.empty:
-                st.write("*لا مصروفات.*")
-                continue
-            detailed_rows = []
-            for _, row in df_f_spend.iterrows():
-                label = row['description']
-                if row['account_type'] == 'رواتب الموظفين' and row['ref_name']: label = f"راتب ({row['ref_name']}) - {label}"
-                detailed_rows.append({"التاريخ": row['date'], "البيان": label, "المبلغ ($)": f"${row['total_usd']:,.0f}"})
-            st.table(pd.DataFrame(detailed_rows))
-
-# --- 4. حساب الشيخ عبد الكريم ---
-elif page == "👤 حساب الشيخ عبد الكريم":
-    st.title("👤 حساب الشيخ عبد الكريم")
-    df_trans = pd.read_sql_query("SELECT id, date, description, type, amount_usd, amount_lbp, total_usd FROM transactions WHERE account_type='حساب الشيخ عبد الكريم' ORDER BY id DESC", conn)
-    
-    if df_trans.empty:
-        st.info("💡 لا حركات مسجلة.")
-    else:
-        sheikh_in = df_trans[df_trans['type'] == 'قبض']['total_usd'].sum()
-        sheikh_out = df_trans[df_trans['type'] == 'صرف']['total_usd'].sum()
-        status = sheikh_in - sheikh_out
-        st.success(f"⚖️ الميزان الحالي: {'لكم' if status > 0 else 'عليكم'} {abs(status):,.0f}$")
-        
-        df_display = pd.DataFrame()
-        df_display['التاريخ'] = df_trans['date']
-        df_display['الحركة'] = df_trans['type']
-        df_display['البيان'] = df_trans['description']
-        df_display['الإجمالي ($)'] = df_trans['total_usd'].apply(lambda x: f"${x:,.0f}")
-        st.table(df_display)
-
-# --- 5. الرواتب ---
-elif page == "👥 الرواتب":
-    st.title("👥 الرواتب")
-    st.subheader("📝 إضافة موظف")
-    col1, col2 = st.columns(2)
-    emp_name = col1.text_input("الاسم")
-    emp_salary = col2.number_input("الراتب ($)", min_value=0)
-    
-    if st.button("حفظ الموظف"):
-        if emp_name:
-            c.execute("INSERT OR REPLACE INTO employees (name, salary) VALUES (?, ?)", (emp_name, emp_salary))
-            conn.commit()
-            st.success("تم الحفظ!")
-            st.rerun()
-            
-    st.write("---")
-    st.subheader("📋 الموظفون")
-    df_emps = pd.read_sql_query("SELECT name, salary FROM employees", conn)
-    if not df_emps.empty:
-        st.table(df_emps)
-
-# --- 6. التقارير ---
-elif page == "📊 التقارير":
-    st.title("📊 التقارير المالية")
-    rep_type = st.selectbox("النوع", ["يومي", "شهري", "سنوي"])
-    df_report = pd.read_sql_query("SELECT * FROM transactions ORDER BY id DESC", conn)
-    
-    if not df_report.empty:
-        df_report['parsed_date'] = pd.to_datetime(df_report['date'])
-        if rep_type == "يومي":
-            sel_date = st.date_input("اليوم", datetime.now())
-            df_filtered = df_report[df_report['parsed_date'].dt.date == sel_date]
-        elif rep_type == "شهري":
-            sel_month = st.slider("الشهر", 1, 12, int(datetime.now().month))
-            df_filtered = df_report[df_report['parsed_date'].dt.month == sel_month]
-        else:
-            sel_year = st.number_input("السنة", min_value=2020, value=int(datetime.now().year))
-            df_filtered = df_report[df_report['parsed_date'].dt.year == sel_year]
-            
-        if not df_filtered.empty:
-            df_display = pd.DataFrame()
-            df_display['التاريخ'] = df_filtered['date']
-            df_display['الحركة'] = df_filtered['type']
-            df_display['البيان'] = df_filtered['description']
-            df_display['الصندوق'] = df_filtered['fund']
-            df_display['الإجمالي ($)'] = df_filtered['total_usd'].apply(lambda x: f"${x:,.0f}")
-            st.table(df_display)
-            st.button("🖨️ طباعة")
-
-# --- 7. الإعدادات ---
-elif page == "⚙️ الإعدادات":
-    st.title("⚙️ الإعدادات")
-    new_rate = st.number_input("سعر صرف الدولار (ل.ل)", value=dollar_rate)
-    if st.button("تحديث السعر"):
-        c.execute("UPDATE settings SET value=? WHERE key='dollar_rate'", (str(new_rate),))
-        conn.commit()
-        st.success("تم التحديث!")
-        st.rerun()
+                      (str(t_date), description, t_type, usd_amount, lbp_amount,
