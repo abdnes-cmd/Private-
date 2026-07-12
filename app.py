@@ -135,30 +135,14 @@ if page == "🏠 الرئيسية (لوحة التحكم)":
     if not df_trans.empty:
         total_in = df_trans[df_trans['type'] == 'قبض']['total_usd'].sum()
         total_out = df_trans[df_trans['type'] == 'صرف']['total_usd'].sum()
-        
-        # احتساب دقيق لذمة الشيخ عبد الكريم بالتفصيل لبيان الحقوق
-        sheikh_personal_in = df_trans[(df_trans['account_type'] == 'حساب الشيخ عبد الكريم') & (df_trans['type'] == 'قبض')]['total_usd'].sum()
-        sheikh_personal_out = df_trans[(df_trans['account_type'] == 'حساب الشيخ عبد الكريم') & (df_trans['type'] == 'صرف')]['total_usd'].sum()
-        net_sheikh_status = sheikh_personal_out - sheikh_personal_in
     else:
         total_in, total_out = 0.0, 0.0
-        net_sheikh_status = 0.0
-        
     current_balance = total_in - total_out
     
-    # عرض الأرصدة والذمم المالية بشكل كروت واضحة في الأعلى
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3 = st.columns(3)
     col1.metric("💰 الرصيد الإجمالي الحالي ($)", f"${current_balance:,.0f}")
     col2.metric("🟢 إجمالي الإيرادات ($)", f"${total_in:,.0f}")
     col3.metric("🔴 إجمالي المصروفات ($)", f"${total_out:,.0f}")
-    
-    # منطق تلوين وعرض بطاقة الشيخ عبد الكريم بشكل فوري ومريح للعين والذمة
-    if net_sheikh_status > 0:
-        col4.metric("⚖️ ذمة الشيخ عبد الكريم ($)", f"${net_sheikh_status:,.0f}", delta="مستحق لك على المسجد", delta_color="inverse")
-    elif net_sheikh_status < 0:
-        col4.metric("⚖️ ذمة الشيخ عبد الكريم ($)", f"${abs(net_sheikh_status):,.0f}", delta="مطلوب منك للمسجد", delta_color="normal")
-    else:
-        col4.metric("⚖️ ذمة الشيخ عبد الكريم ($)", "$0", delta="مسدد ومتقاص تماماً")
     
     st.write("---")
     st.subheader("👥 ملخص رواتب وحسابات الموظفين والعاملين ($)")
@@ -199,17 +183,16 @@ if page == "🏠 الرئيسية (لوحة التحكم)":
     st.write("---")
     st.subheader("📌 أرصدة الصناديق الصافية والذمم المالية ($)")
     
+    # تصحيح منطق احتساب مديونية الشيخ عبد الكريم (الصرف يعني الشيخ دفع من جيبه فهو دائن، القبض يعني أخذ ماله)
+    sheikh_personal_in = df_trans[(df_trans['account_type'] == 'حساب الشيخ عبد الكريم') & (df_trans['type'] == 'قبض')]['total_usd'].sum() if not df_trans.empty else 0.0
+    sheikh_personal_out = df_trans[(df_trans['account_type'] == 'حساب الشيخ عبد الكريم') & (df_trans['type'] == 'صرف')]['total_usd'].sum() if not df_trans.empty else 0.0
+
     headers = ["الصندوق أو الحساب المالي", "الحالة المالية والاتزان ($)"]
     rows = []
     for f in df_funds['name']:
         if f == "ذمة وسلف الشيخ عبد الكريم":
-            if not df_trans.empty:
-                sheikh_personal_in = df_trans[(df_trans['account_type'] == 'حساب الشيخ عبد الكريم') & (df_trans['type'] == 'قبض')]['total_usd'].sum()
-                sheikh_personal_out = df_trans[(df_trans['account_type'] == 'حساب الشيخ عبد الكريم') & (df_trans['type'] == 'صرف')]['total_usd'].sum()
-                net_sheikh_status = sheikh_personal_out - sheikh_personal_in
-            else:
-                net_sheikh_status = 0.0
-                
+            # المصروفات هنا تعني أن الشيخ دفع للمسجد (فهو يطلب المسجد)
+            net_sheikh_status = sheikh_personal_out - sheikh_personal_in
             if net_sheikh_status > 0:
                 status_text = f"${net_sheikh_status:,.0f} (مستحق لك على المسجد)"
             elif net_sheikh_status < 0:
@@ -223,7 +206,7 @@ if page == "🏠 الرئيسية (لوحة التحكم)":
             rows.append([f, f"${(f_in - f_out):,.0f}"])
     render_custom_html_table(headers, rows)
 
-# --- باقي الأقسام تباعاً دون أي تغيير لتجنب حدوث أي مشاكل ---
+# --- 2. القيود اليومية ---
 elif page == "📝 القيود اليومية":
     st.title("📝 تسجيل القيود اليومية")
     conn = get_db_connection()
@@ -295,6 +278,7 @@ elif page == "📝 القيود اليومية":
                 st.success("تم الحذف!")
                 safe_rerun()
 
+# --- 3. الصناديق ---
 elif page == "💵 الصناديق":
     st.title("💵 إدارة وتفاصيل أرصدة الصناديق")
     conn = get_db_connection()
@@ -311,6 +295,7 @@ elif page == "💵 الصناديق":
         rows.append([f, f"${f_in:,.0f}", f"${f_out:,.0f}", f"${(f_in - f_out):,.0f}"])
     render_custom_html_table(headers, rows)
 
+# --- 4. حساب الشيخ عبد الكريم ---
 elif page == "👤 حساب الشيخ عبد الكريم":
     st.title("👤 كشف حساب الشيخ عبد الكريم التفصيلي")
     conn = get_db_connection()
@@ -322,7 +307,7 @@ elif page == "👤 حساب الشيخ عبد الكريم":
     else:
         sheikh_in = df_trans[df_trans['type'] == 'قبض']['total_usd'].sum()
         sheikh_out = df_trans[df_trans['type'] == 'صرف']['total_usd'].sum()
-        status = sheikh_out - sheikh_in
+        status = sheikh_out - sheikh_in  # تعديل المعادلة هنا أيضاً لتعبر عن دائن ومدين بشكل صحيح
         
         if status > 0: st.success(f"⚖️ الميزان الحالي: المسجد مدين لك بمبلغ {status:,.0f}$ (مستحق لك على المسجد)")
         elif status < 0: st.warning(f"⚖️ الميزان الحالي: أنت مدين للمسجد بمبلغ {abs(status):,.0f}$ (مطلوب سداده للمسجد)")
@@ -336,6 +321,7 @@ elif page == "👤 حساب الشيخ عبد الكريم":
             rows.append([r['id'], r['date'], t_label, r['description'], f"${r['total_usd']:,.0f}"])
         render_custom_html_table(headers, rows)
 
+# --- 5. الرواتب ---
 elif page == "👥 الرواتب":
     st.title("👥 إدارة رواتب الموظفين والعاملين")
     st.subheader("📝 إضافة موظف جديد")
@@ -353,6 +339,7 @@ elif page == "👥 الرواتب":
             st.success(f"تم حفظ الموظف {emp_name} بنجاح!")
             safe_rerun()
 
+# --- 6. التقارير ---
 elif page == "📊 التقارير":
     st.title("📊 التقارير المالية والطباعة")
     rep_type = st.selectbox("نوع التقرير المراد عرضه", ["يومي", "شهري", "سنوي"], key="rep_t_v29")
@@ -386,9 +373,11 @@ elif page == "📊 التقارير":
                 rows.append([r['id'], r['date'], r['type'], desc, r['fund'], f"${r['total_usd']:,.0f}"])
             render_custom_html_table(headers, rows)
 
+# --- 7. الإعدادات ---
 elif page == "⚙️ الإعدادات":
     st.title("⚙️ الإعدادات العامة وخيارات الأمان")
     
+    # تحديث سعر الصرف
     new_rate = st.number_input("تحديث سعر صرف الدولار مقابل الليرة اللبنانية", value=dollar_rate, step=500.0, key="set_r_v29")
     if st.button("تحديث سعر الصرف الآن", key="set_save_r_v29"):
         conn = get_db_connection()
