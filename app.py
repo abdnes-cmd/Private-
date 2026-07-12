@@ -3,7 +3,6 @@ import pandas as pd
 import sqlite3
 from datetime import datetime
 import os
-import shutil
 
 # إعدادات الصفحة والهوية البصرية (الأخضر والذهبي)
 st.set_page_config(page_title="النظام المالي للمسجد", page_icon="🕌", layout="wide")
@@ -56,7 +55,7 @@ st.markdown("""
 
 db_file_path = 'mosque_finance.db'
 
-# الاتصال بقاعدة البيانات
+# فتح الاتصال بقاعدة البيانات بشكل دائم
 conn = sqlite3.connect(db_file_path, check_same_thread=False)
 c = conn.cursor()
 
@@ -84,7 +83,7 @@ st.sidebar.markdown("<h2 style='text-align: center; color: #D4AF37; margin-top: 
 st.sidebar.markdown("<p style='text-align: center; color: #004D40; font-weight: bold;'>مجدل عنجر</p>", unsafe_allow_html=True)
 st.sidebar.markdown("</div>", unsafe_allow_html=True)
 
-page = st.sidebar.radio("انتقل إلى:", ["🏠 الرئيسية (لوحة التحكم)", "📝 القيود اليومية", "💵 الصناديق", "👤 حساب الشيخ عبد الكريم", "👥 الرواتب", "📊 التقارير", "⚙️ الإعدادات"], key="side_navigation_v25")
+page = st.sidebar.radio("انتقل إلى:", ["🏠 الرئيسية (لوحة التحكم)", "📝 القيود اليومية", "💵 الصناديق", "👤 حساب الشيخ عبد الكريم", "👥 الرواتب", "📊 التقارير", "⚙️ الإعدادات"], key="side_navigation_v26")
 
 def render_custom_html_table(headers, rows):
     html = "<table class='custom-table'><thead><tr>"
@@ -187,10 +186,10 @@ elif page == "📝 القيود اليومية":
     st.info(f"رقم السند التلقائي القادم: {(max_id + 1) if max_id else 1}")
     
     col1, col2 = st.columns(2)
-    t_date = col1.date_input("التاريخ", datetime.now(), key="q_date_v25")
-    t_type = col2.selectbox("نوع العملية", ["قبض", "صرف"], key="q_type_v25")
-    usd_amount = col1.number_input("المبلغ بالدولار ($)", min_value=0.0, step=1.0, key="q_usd_v25")
-    lbp_amount = col2.number_input("المبلغ بالليرة (ل.ل)", min_value=0.0, step=1000.0, key="q_lbp_v25")
+    t_date = col1.date_input("التاريخ", datetime.now(), key="q_date_v26")
+    t_type = col2.selectbox("نوع العملية", ["قبض", "صرف"], key="q_type_v26")
+    usd_amount = col1.number_input("المبلغ بالدولار ($)", min_value=0.0, step=1.0, key="q_usd_v26")
+    lbp_amount = col2.number_input("المبلغ بالليرة (ل.ل)", min_value=0.0, step=1000.0, key="q_lbp_v26")
     
     converted_instant = round(lbp_amount / dollar_rate) if dollar_rate > 0 else 0
     total_calculated_usd = round(usd_amount + converted_instant)
@@ -198,17 +197,17 @@ elif page == "📝 القيود اليومية":
     if lbp_amount > 0:
         st.warning(f"📊 قيمة الليرة تعادل: {converted_instant:,.0f}$")
         
-    fund = col1.selectbox("الصندوق المتأثر", funds_list, key="q_fund_v25")
-    account_type = col2.selectbox("نوع الحساب", ["عام", "حساب الشيخ عبد الكريم", "رواتب الموظفين"], key="q_acc_type_v25")
+    fund = col1.selectbox("الصندوق المتأثر", funds_list, key="q_fund_v26")
+    account_type = col2.selectbox("نوع الحساب", ["عام", "حساب الشيخ عبد الكريم", "رواتب الموظفين"], key="q_acc_type_v26")
     
     ref_name = ""
     if account_type == "رواتب الموظفين":
-        if emp_list: ref_name = st.selectbox("اختر الموظف", emp_list, key="q_emp_v25")
+        if emp_list: ref_name = st.selectbox("اختر الموظف", emp_list, key="q_emp_v26")
         else: st.error("⚠️ لا يوجد موظفون مسجلون.")
         
-    description = st.text_area("البيان / التفاصيل", key="q_desc_v25")
+    description = st.text_area("البيان / التفاصيل", key="q_desc_v26")
     
-    if st.button("حفظ السند المالي", key="q_save_btn_v25"):
+    if st.button("حفظ السند المالي", key="q_save_btn_v26"):
         if total_calculated_usd == 0: st.error("الرجاء إدخال قيمة مالية.")
         elif not description: st.error("الرجاء إدخال البيان.")
         else:
@@ -230,7 +229,7 @@ elif page == "📝 القيود اليومية":
             details = f"【 {row['type']} 】 بمبلغ **{row['total_usd']:,.0f}$** | {row['description']}"
             if row['ref_name']: details += f" ({row['ref_name']})"
             c3.write(details)
-            if c4.button("🗑️ حذف", key=f"del_v25_{row['id']}"):
+            if c4.button("🗑️ حذف", key=f"del_v26_{row['id']}"):
                 c.execute("DELETE FROM transactions WHERE id = ?", (row['id'],))
                 conn.commit()
                 st.success("تم الحذف!")
@@ -280,10 +279,10 @@ elif page == "👥 الرواتب":
     st.title("👥 إدارة رواتب الموظفين والعاملين")
     st.subheader("📝 إضافة موظف جديد")
     col1, col2 = st.columns(2)
-    emp_name = col1.text_input("اسم الموظف كاملاً", key="emp_n_v25")
-    emp_salary = col2.number_input("الراتب الشهري المحدد ($)", min_value=0, step=50, key="emp_s_v25")
+    emp_name = col1.text_input("اسم الموظف كاملاً", key="emp_n_v26")
+    emp_salary = col2.number_input("الراتب الشهري المحدد ($)", min_value=0, step=50, key="emp_s_v26")
     
-    if st.button("حفظ الموظف الجديد", key="emp_save_v25"):
+    if st.button("حفظ الموظف الجديد", key="emp_save_v26"):
         if emp_name:
             c.execute("INSERT OR REPLACE INTO employees (name, salary) VALUES (?, ?)", (emp_name, emp_salary))
             conn.commit()
@@ -293,7 +292,7 @@ elif page == "👥 الرواتب":
 # --- 6. التقارير ---
 elif page == "📊 التقارير":
     st.title("📊 التقارير المالية والطباعة")
-    rep_type = st.selectbox("نوع التقرير المراد عرضه", ["يومي", "شهري", "سنوي"], key="rep_t_v25")
+    rep_type = st.selectbox("نوع التقرير المراد عرضه", ["يومي", "شهري", "سنوي"], key="rep_t_v26")
     df_report = pd.read_sql_query("SELECT * FROM transactions ORDER BY id DESC", conn)
     
     if df_report.empty:
@@ -301,13 +300,13 @@ elif page == "📊 التقارير":
     else:
         df_report['parsed_date'] = pd.to_datetime(df_report['date'])
         if rep_type == "يومي":
-            sel_date = st.date_input("اختر اليوم", datetime.now(), key="rep_d_v25")
+            sel_date = st.date_input("اختر اليوم", datetime.now(), key="rep_d_v26")
             df_filtered = df_report[df_report['parsed_date'].dt.date == sel_date]
         elif rep_type == "شهري":
-            sel_month = st.slider("اختر الشهر", 1, 12, int(datetime.now().month), key="rep_m_v25")
+            sel_month = st.slider("اختر الشهر", 1, 12, int(datetime.now().month), key="rep_m_v26")
             df_filtered = df_report[df_report['parsed_date'].dt.month == sel_month]
         else:
-            sel_year = st.number_input("حدد السنة", min_value=2020, value=int(datetime.now().year), key="rep_y_v25")
+            sel_year = st.number_input("حدد السنة", min_value=2020, value=int(datetime.now().year), key="rep_y_v26")
             df_filtered = df_report[df_report['parsed_date'].dt.year == sel_year]
             
         if df_filtered.empty:
@@ -327,8 +326,8 @@ elif page == "⚙️ الإعدادات":
     st.title("⚙️ الإعدادات العامة وخيارات الأمان")
     
     # تحديث سعر الصرف
-    new_rate = st.number_input("تحديث سعر صرف الدولار مقابل الليرة اللبنانية", value=dollar_rate, step=500.0, key="set_r_v25")
-    if st.button("تحديث سعر الصرف الآن", key="set_save_r_v25"):
+    new_rate = st.number_input("تحديث سعر صرف الدولار مقابل الليرة اللبنانية", value=dollar_rate, step=500.0, key="set_r_v26")
+    if st.button("تحديث سعر الصرف الآن", key="set_save_r_v26"):
         c.execute("UPDATE settings SET value=? WHERE key='dollar_rate'", (str(new_rate),))
         conn.commit()
         st.success("تم تحديث سعر الصرف بنجاح!")
@@ -336,20 +335,19 @@ elif page == "⚙️ الإعدادات":
         
     st.write("---")
     
-    # --- قسم استعادة البيانات والنسخ الاحتياطي ---
+    # --- قسم استعادة البيانات والنسخ الاحتياطي الصافي ---
     st.subheader("💾 استرجاع الحسابات المحفوظة والنسخ الاحتياطي")
     
-    # ميزة رفع ملف المحفوظات لإعادة البيانات
-    uploaded_file = st.file_uploader("📤 اختر ملف المحفوظات (Backup) من هاتفك لاستعادة الحسابات فوراً", type=["db"], key="restore_uploader_v25")
+    uploaded_file = st.file_uploader("📤 اختر ملف المحفوظات (Backup) من هاتفك لاستعادة الحسابات فوراً", type=["db"], key="restore_uploader_v26")
     if uploaded_file is not None:
-        if st.button("⚙️ اضغط هنا لتأكيد استعادة البيانات الآن", key="confirm_restore_btn_v25"):
+        if st.button("⚙️ اضغط هنا لتأكيد استعادة البيانات الآن", key="confirm_restore_btn_v26"):
             try:
-                conn.close() # إغلاق الاتصال الحالي بأمان
+                # كتابة البيانات المرفوعة مباشرة فوق الملف الحالي لضمان السلامة
+                db_data = uploaded_file.getbuffer()
                 with open(db_file_path, "wb") as f:
-                    f.write(uploaded_file.getbuffer())
-                st.success("✅ تم استيراد واستعادة كافة الحسابات القديمة بنجاح تام! يرجى إعادة تحديث الصفحة الآن لرؤيتها.")
+                    f.write(db_data)
+                st.success("✅ تم استعادة كافة الحسابات القديمة بنجاح تام! يرجى إعادة تحديث الصفحة الآن لتحديث البيانات.")
                 st.balloons()
-                st.rerun()
             except Exception as e:
                 st.error(f"حدث خطأ أثناء الاستعادة: {e}")
                 
@@ -365,5 +363,5 @@ elif page == "⚙️ الإعدادات":
             data=db_bytes,
             file_name=f"mosque_finance_backup_{current_date_str}.db",
             mime="application/octet-stream",
-            key="backup_btn_v25"
+            key="backup_btn_v26"
         )
