@@ -183,7 +183,7 @@ if page == "🏠 الرئيسية (لوحة التحكم)":
     st.write("---")
     st.subheader("📌 أرصدة الصناديق الصافية والذمم المالية ($)")
     
-    # تصحيح منطق احتساب مديونية الشيخ عبد الكريم (الصرف يعني الشيخ دفع من جيبه فهو دائن، القبض يعني أخذ ماله)
+    # احتساب مديونية الشيخ عبد الكريم (بطريقة الكود القديمة المعكوسة)
     sheikh_personal_in = df_trans[(df_trans['account_type'] == 'حساب الشيخ عبد الكريم') & (df_trans['type'] == 'قبض')]['total_usd'].sum() if not df_trans.empty else 0.0
     sheikh_personal_out = df_trans[(df_trans['account_type'] == 'حساب الشيخ عبد الكريم') & (df_trans['type'] == 'صرف')]['total_usd'].sum() if not df_trans.empty else 0.0
 
@@ -191,7 +191,6 @@ if page == "🏠 الرئيسية (لوحة التحكم)":
     rows = []
     for f in df_funds['name']:
         if f == "ذمة وسلف الشيخ عبد الكريم":
-            # المصروفات هنا تعني أن الشيخ دفع للمسجد (فهو يطلب المسجد)
             net_sheikh_status = sheikh_personal_out - sheikh_personal_in
             if net_sheikh_status > 0:
                 status_text = f"${net_sheikh_status:,.0f} (مستحق لك على المسجد)"
@@ -307,7 +306,7 @@ elif page == "👤 حساب الشيخ عبد الكريم":
     else:
         sheikh_in = df_trans[df_trans['type'] == 'قبض']['total_usd'].sum()
         sheikh_out = df_trans[df_trans['type'] == 'صرف']['total_usd'].sum()
-        status = sheikh_out - sheikh_in  # تعديل المعادلة هنا أيضاً لتعبر عن دائن ومدين بشكل صحيح
+        status = sheikh_out - sheikh_in
         
         if status > 0: st.success(f"⚖️ الميزان الحالي: المسجد مدين لك بمبلغ {status:,.0f}$ (مستحق لك على المسجد)")
         elif status < 0: st.warning(f"⚖️ الميزان الحالي: أنت مدين للمسجد بمبلغ {abs(status):,.0f}$ (مطلوب سداده للمسجد)")
