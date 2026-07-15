@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import pandas as pd
 from datetime import datetime
+import urllib.parse  # مكتبة ترميز الحروف العربية في الروابط
 
 # إعدادات الصفحة
 st.set_page_config(
@@ -37,7 +38,10 @@ AIRTABLE_PAT = st.secrets.get("AIRTABLE_PAT", "ضع_رمز_الوصول_الخا
 BASE_ID = st.secrets.get("BASE_ID", "ضع_معرف_القاعدة_هنا")
 TABLE_NAME = st.secrets.get("TABLE_NAME", "ضع_اسم_الجدول_هنا")
 
-URL = f"https://api.airtable.com/v0/{BASE_ID}/{TABLE_NAME}"
+# ترميز اسم الجدول لتفادي مشكلة الحروف العربية (latin-1) في الروابط
+ENCODED_TABLE_NAME = urllib.parse.quote(TABLE_NAME)
+
+URL = f"https://api.airtable.com/v0/{BASE_ID}/{ENCODED_TABLE_NAME}"
 HEADERS = {
     "Authorization": f"Bearer {AIRTABLE_PAT}",
     "Content-Type": "application/json"
