@@ -6,6 +6,8 @@ import os
 
 # إعدادات الصفحة والهوية البصرية (الأخضر والذهبي)
 st.set_page_config(page_title="النظام المالي للمسجد", page_icon="🕌", layout="wide")
+if "initialized" not in st.session_state:
+    st.session_state["initialized"] = True
 
 # تصميم مخصص لتعديل اتجاه وتلوين الواجهة
 st.markdown("""
