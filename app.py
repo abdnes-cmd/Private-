@@ -1,8 +1,9 @@
 import streamlit as st
 import requests
+import json
 import pandas as pd
 from datetime import datetime
-import urllib.parse  # مكتبة ترميز الحروف العربية في الروابط
+import urllib.parse
 
 # إعدادات الصفحة
 st.set_page_config(
@@ -34,16 +35,20 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- إعدادات الاتصال بـ Airtable ---
-AIRTABLE_PAT = st.secrets.get("AIRTABLE_PAT", "ضع_رمز_الوصول_الخاص_بك_هنا")
-BASE_ID = st.secrets.get("BASE_ID", "ضع_معرف_القاعدة_هنا")
-TABLE_NAME = st.secrets.get("TABLE_NAME", "ضع_اسم_الجدول_هنا")
+AIRTABLE_PAT = st.secrets.get("AIRTABLE_PAT", "ضع_رمز_الوصول_الخاص_بك_هنا").strip()
+BASE_ID = st.secrets.get("BASE_ID", "ضع_معرف_القاعدة_هنا").strip()
+TABLE_NAME = st.secrets.get("TABLE_NAME", "ضع_اسم_الجدول_هنا").strip()
 
-# ترميز اسم الجدول لتفادي مشكلة الحروف العربية (latin-1) في الروابط
+# ترميز اسم الجدول بشكل آمن جداً للروابط
 ENCODED_TABLE_NAME = urllib.parse.quote(TABLE_NAME)
-
 URL = f"https://api.airtable.com/v0/{BASE_ID}/{ENCODED_TABLE_NAME}"
+
+# تنظيف الترويسات وإجبار بايثون على التعامل معها كـ latin-1 متوافق بعد التشفير الآمن
+# هذا يمنع خطأ latin-1 codec can't encode تماماً
+auth_header = f"Bearer {AIRTABLE_PAT}".encode('utf-8').decode('latin-1')
+
 HEADERS = {
-    "Authorization": f"Bearer {AIRTABLE_PAT}",
+    "Authorization": auth_header,
     "Content-Type": "application/json"
 }
 
@@ -79,8 +84,10 @@ def insert_data(description, trans_type, amount, date, category):
         }
     }
     try:
-        response = requests.post(URL, headers=HEADERS, json=payload)
-        if response.status_code == 200 or response.status_code == 201:
+        # إرسال البيانات مشفرة يدوياً بصيغة utf-8 لتفادي مشاكل الحروف العربية في الجسم (Body)
+        binary_data = json.dumps(payload, ensure_ascii=False).encode('utf-8')
+        response = requests.post(URL, headers=HEADERS, data=binary_data)
+        if response.status_code in [200, 201]:
             return True
         else:
             st.error(f"فشل الإدخال: {response.text}")
@@ -94,7 +101,7 @@ st.title("🕌 نظام إدارة صندوق المسجد والواردات")
 st.write("برنامج ذكي لإدارة الحسابات وتتبع التبرعات والمصروفات بشكل مباشر.")
 st.markdown("---")
 
-# 1. جلب البيانات أولاً لضمان تعريف المتغير df قبل استخدامه
+# 1. جلب البيانات أولاً
 df = fetch_data()
 
 # 2. تهيئة متغيرات الحسابات بقيم افتراضية لتفادي أي أخطاء
@@ -103,9 +110,8 @@ total_expense_general = 0.0
 balance_general = 0.0
 zakat_balance = 0.0
 
-# 3. حساب الإحصائيات إذا كانت البيانات قد جلبت بنجاح وليست فارغة
+# 3. حساب الإحصائيات إذا كانت البيانات متوفرة وليست فارغة
 if not df.empty:
-    # التأكد من تهيئة الأعمدة وتجنب القيم الفارغة
     for col in ["المبلغ", "النوع", "الفئة"]:
         if col not in df.columns:
             df[col] = 0 if col == "المبلغ" else ""
@@ -205,12 +211,10 @@ with tab1:
 with tab2:
     st.subheader("سجل العمليات المالية الأخير")
     if not df.empty:
-        # ترتيب الجدول ليعرض التاريخ الأحدث أولاً
         df_display = df.copy()
         if "التاريخ" in df_display.columns:
             df_display = df_display.sort_values(by="التاريخ", ascending=False)
             
-        # تنسيق الأعمدة المراد عرضها
         cols_order = ["التاريخ", "البيان", "النوع", "المبلغ", "الفئة"]
         cols_order = [c for c in cols_order if c in df_display.columns]
         
