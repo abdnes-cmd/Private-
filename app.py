@@ -2,27 +2,19 @@ import streamlit as st
 import requests
 import pandas as pd
 from datetime import datetime
+import base64
 
-# إعدادات الصفحة المظهرة
-st.set_page_config(page_title="الصندوق الشخصي", page_icon="💰", layout="centered")
+st.set_page_config(page_title="صندوق المسجد", page_icon="🕌", layout="wide")
 
-# قراءة الرموز السرية بأمان من إعدادات Streamlit
-try:
-    AIRTABLE_API_KEY = st.secrets["AIRTABLE_API_KEY"]
-    BASE_ID = st.secrets["BASE_ID"]
-    TABLE_NAME = st.secrets["TABLE_NAME"]
-except KeyError:
-    st.error("⚠️ يرجى التأكد من إضافة الرموز السرية (Secrets) في إعدادات Streamlit أولاً لتشغيل التطبيق!")
-    st.stop()
-
-# إعداد رأس الطلب للاتصال بـ Airtable
-headers = {
-    "Authorization": f"Bearer {AIRTABLE_API_KEY}",
-    "Content-Type": "application/json"
-}
+# إعدادات Airtable
+ENCODED_KEY = "cGF0bmtsZ05WT0xlWjJ1RGYuNTk2NjgzMDM5NmRmOGUxOGNhNzkwYzVmYWU1NDlhZDdjOTk3Y2YxZDFjYWFjMDI2MTE1OTFkNDIzM2ZjNzYyYg=="
+AIRTABLE_API_KEY = base64.b64decode(ENCODED_KEY).decode("utf-8")
+BASE_ID = "app8p8z76mWPa3fET"
+TABLE_NAME = "Table 1"
+headers = {"Authorization": f"Bearer {AIRTABLE_API_KEY}", "Content-Type": "application/json"}
 url = f"https://api.airtable.com/v0/{BASE_ID}/{TABLE_NAME}"
 
-# دالة لجلب البيانات وعرضها
+# دالة جلب البيانات
 def fetch_data():
     try:
         response = requests.get(url, headers=headers)
@@ -31,81 +23,118 @@ def fetch_data():
             data = []
             for r in records:
                 fields = r.get("fields", {})
+                desc_val = fields.get("البيان", fields.get("Name", ""))
                 data.append({
+                    "ID": r.get("id"),
                     "التاريخ": fields.get("التاريخ", ""),
                     "النوع": fields.get("النوع", ""),
-                    "الفئة": fields.get("الفئة", ""),
                     "المبلغ": fields.get("المبلغ", 0),
-                    "البيان": fields.get("البيان", "")
+                    "البيان": desc_val
                 })
-            return pd.DataFrame(data)
-        else:
-            st.error(f"فشل الاتصال بـ Airtable. رمز الخطأ: {response.status_code}")
-            return pd.DataFrame()
-    except Exception as e:
-        st.error(f"حدث خطأ أثناء الاتصال: {e}")
+            df = pd.DataFrame(data)
+            if not df.empty:
+                return df[["ID", "التاريخ", "النوع", "المبلغ", "البيان"]]
+            return df
+        return pd.DataFrame()
+    except: 
         return pd.DataFrame()
 
-# دالة لإضافة معاملة جديدة
-def add_record(date, trans_type, category, amount, description):
-    payload = {
-        "records": [
-            {
-                "fields": {
-                    "التاريخ": date.strftime("%Y-%m-%d"),
-                    "النوع": trans_type,
-                    "الفئة": category,
-                    "المبلغ": float(amount),
-                    "البيان": description
-                }
-            }
-        ]
-    }
+# دالة حذف سجل معين
+def delete_record(record_id):
     try:
-        response = requests.post(url, headers=headers, json=payload)
-        return response.status_code == 200
-    except Exception as e:
-        st.error(f"حدث خطأ أثناء الإضافة: {e}")
+        delete_url = f"{url}/{record_id}"
+        res = requests.delete(delete_url, headers=headers)
+        return res.status_code == 200
+    except:
         return False
 
-# عنوان التطبيق
-st.title("💰 الصندوق الشخصي للمدخول والمصروفات")
-st.write("سجل معاملاتك المالية وراقب حركة صندوقك بسهولة.")
+# --- واجهة التطبيق ---
+st.title("🕌 صندوق المسجد والشؤون المالية")
 
-st.markdown("---")
-
-# نموذج إضافة معاملة جديدة
-st.subheader("📝 إضافة معاملة جديدة")
-with st.form("transaction_form", clear_on_submit=True):
-    col1, col2 = st.columns(2)
-    with col1:
-        amount = st.number_input("المبلغ", min_value=0.1, step=1.0, format="%.2f")
-        category = st.text_input("الفئة (مثال: طعام، وقود، راتب...)")
-    with col2:
-        trans_type = st.selectbox("النوع", ["مصروف", "مدخول"])
-        date = st.date_input("التاريخ", datetime.today())
-        
-    description = st.text_input("البيان / الوصف")
-    
-    submit_button = st.form_submit_button("إضافة المعاملة")
-
-if submit_button:
-    if not category:
-         st.warning("الرجاء كتابة الفئة أولاً!")
-    else:
-        success = add_record(date, trans_type, category, amount, description)
-        if success:
-            st.success("🎉 تم تسجيل المعاملة بنجاح وإرسالها إلى Airtable!")
-            st.rerun() # لإعادة جلب البيانات وعرض الجديد فوراً
-        else:
-            st.error("❌ حدث خطأ أثناء محاولة إرسال البيانات. تأكد من إعدادات الجدول في Airtable.")
-
-st.markdown("---")
-
-# عرض المعاملات المسجلة
-st.subheader("📊 حركة الصندوق الحالية")
 df = fetch_data()
+
+# 1. لوحة التحكم في الأعلى (احتساب الكسور بدقة)
 if not df.empty:
-    st.dataframe(df, use_container_width=True)
+    df['المبلغ'] = pd.to_numeric(df['المبلغ'], errors='coerce').fillna(0.0)
+    income = df[df['النوع'] == 'المدخول']['المبلغ'].sum()
+    expense = df[df['النوع'] == 'المصروف']['المبلغ'].sum()
+    balance = income - expense
 else:
-    st.info("لا توجد معاملات مسجلة بعد في الجدول.")
+    income, expense, balance = 0.0, 0.0, 0.0
+
+col1, col2, col3 = st.columns(3)
+col1.metric("🟢 إجمالي المقبوضات (المدخول)", f"{income:,.2f}")
+col2.metric("🔴 إجمالي المدفوعات (المصروف)", f"{expense:,.2f}")
+col3.metric("💰 الرصيد المتبقي في الصندوق", f"{balance:,.2f}")
+
+st.markdown("---")
+
+# 2. أزرار المعاملات والإدارة
+tab1, tab2, tab3 = st.tabs(["➕ تسجيل معاملة جديدة", "🗑️ حذف معاملة من الصندوق", "⚙️ إدارة الصندوق"])
+
+with tab1:
+    with st.form("add_form", clear_on_submit=True):
+        c1, c2 = st.columns(2)
+        amount = c1.number_input("المبلغ (يدعم الكسور)", min_value=0.01, step=0.01, format="%.2f")
+        trans_type = c2.selectbox("نوع المعاملة", ["المصروف", "المدخول"])
+        date = st.date_input("التاريخ", datetime.today())
+        desc = st.text_input("البيان (تفاصيل المعاملة)")
+        
+        if st.form_submit_button("إضافة إلى الصندوق"):
+            if desc:
+                payload = {
+                    "records": [{
+                        "fields": {
+                            "Name": desc,
+                            "البيان": desc,
+                            "النوع": trans_type,
+                            "المبلغ": float(amount),
+                            "التاريخ": date.strftime("%Y-%m-%d")
+                        }
+                    }]
+                }
+                requests.post(url, headers=headers, json=payload)
+                st.success("تمت الإضافة بنجاح!")
+                st.rerun()
+            else:
+                st.warning("الرجاء كتابة بيان المعاملة أولاً.")
+
+with tab2:
+    st.subheader("🗑️ حذف معاملة خاطئة")
+    if not df.empty:
+        options = []
+        for idx, row in df.iterrows():
+            options.append(f"{row['التاريخ']} | {row['النوع']} | {row['المبلغ']} | {row['البيان']}")
+        
+        selected_option = st.selectbox("اختر المعاملة المراد حذفها نهائياً:", options)
+        
+        selected_index = options.index(selected_option)
+        selected_id = df.iloc[selected_index]["ID"]
+        
+        if st.button("حذف المعاملة المحددة", type="primary"):
+            if delete_record(selected_id):
+                st.success("تم حذف المعاملة وتحديث الصندوق!")
+                st.rerun()
+            else:
+                st.error("حدث خطأ أثناء محاولة الحذف.")
+    else:
+        st.info("لا توجد معاملات مسجلة لحذفها.")
+
+with tab3:
+    if st.button("🔄 تحديث الصندوق"): 
+        st.rerun()
+    if st.button("🚨 تصفير صندوق المسجد بالكامل", type="primary"):
+        if not df.empty:
+            for r_id in df["ID"]: 
+                requests.delete(f"{url}/{r_id}", headers=headers)
+            st.rerun()
+
+st.markdown("---")
+
+# 3. عرض الجدول بالتفصيل
+st.subheader("📊 دفتر قيود صندوق المسجد")
+if not df.empty:
+    display_df = df.drop(columns=["ID"])
+    st.dataframe(display_df, use_container_width=True)
+else:
+    st.info("صندوق المسجد فارغ حالياً.")
