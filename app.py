@@ -150,7 +150,7 @@ page = st.sidebar.radio(
         "📊 التقارير",
         "⚙️ الإعدادات",
     ],
-    key="side_nav_v42",
+    key="side_nav_v43",
 )
 
 
@@ -236,55 +236,74 @@ if page == "🏠 الرئيسية (لوحة التحكم)":
 
   st.write("---")
   st.subheader("👥 ملخص رواتب وحسابات الموظفين والعاملين ($)")
+
+  # اختيار الشهر والسنة لعرض رواتب ذلك الشهر تحديداً
+  col_m, col_y = st.columns(2)
+  selected_month = col_m.selectbox(
+      "📅 عرض رواتب شهر:",
+      range(1, 13),
+      index=datetime.now().month - 1,
+      key="sal_m_select",
+  )
+  selected_year = col_y.number_input(
+      "السنة:", min_value=2020, value=datetime.now().year, key="sal_y_select"
+  )
+
   emp_salaries_dict = (
       pd.Series(df_emps_db.salary.values, index=df_emps_db.name).to_dict()
       if not df_emps_db.empty
       else {}
   )
 
-  distinct_ref_names = []
+  # فلترة السندات حسب الشهر والسنة المحددين
   if not df_trans.empty:
-    distinct_ref_names = (
-        df_trans[
-            (df_trans["account_type"] == "رواتب الموظفين")
-            & (df_trans["ref_name"] != "")
-        ]["ref_name"]
-        .unique()
-        .tolist()
-    )
+    df_trans["parsed_date"] = pd.to_datetime(df_trans["date"], errors="coerce")
+    df_month_trans = df_trans[
+        (df_trans["parsed_date"].dt.month == selected_month)
+        & (df_trans["parsed_date"].dt.year == selected_year)
+    ]
+    distinct_ref_names = df_month_trans[
+        (df_month_trans["account_type"] == "رواتب الموظفين")
+        & (df_month_trans["ref_name"] != "")
+    ]["ref_name"].unique().tolist()
+  else:
+    df_month_trans = pd.DataFrame()
+    distinct_ref_names = []
+
   all_distinct_workers = list(
       set(list(emp_salaries_dict.keys()) + distinct_ref_names)
   )
 
   if not all_distinct_workers:
-    st.info("💡 لا توجد بيانات موظفين مسجلة حتى الآن.")
+    st.info("💡 لا توجد بيانات موظفين مسجلة لهذا الشهر.")
   else:
     headers = [
         "اسم الموظف / العامل",
-        "الراتب المستحق ($)",
-        "إجمالي ما تم صرفه ($)",
-        "المتبقي له في الذمة ($)",
+        f"راتب شهر ({selected_month}/{selected_year}) ($)",
+        "إجمالي ما تم صرفه له هذا الشهر ($)",
+        "المتبقي له عن الشهر ($)",
     ]
     rows = []
     for worker in all_distinct_workers:
       assigned_salary = emp_salaries_dict.get(worker, 0.0)
-      amount_paid = (
-          df_trans[
-              (df_trans["account_type"] == "رواتب الموظفين")
-              & (df_trans["ref_name"] == worker)
-              & (df_trans["type"] == "صرف")
+      amount_paid_this_month = (
+          df_month_trans[
+              (df_month_trans["account_type"] == "رواتب الموظفين")
+              & (df_month_trans["ref_name"] == worker)
+              & (df_month_trans["type"] == "صرف")
           ]["total_usd"].sum()
-          if not df_trans.empty
+          if not df_month_trans.empty
           else 0.0
       )
-      amount_remaining = assigned_salary - amount_paid
+
+      amount_remaining = assigned_salary - amount_paid_this_month
       display_name = (
           worker if worker in emp_salaries_dict else f"{worker} (اسم محذوف)"
       )
       rows.append([
           display_name,
           f"${assigned_salary:,.0f}",
-          f"${amount_paid:,.0f}",
+          f"${amount_paid_this_month:,.0f}",
           f"${amount_remaining:,.0f}",
       ])
     render_custom_html_table(headers, rows)
@@ -360,8 +379,8 @@ elif page == "📝 القيود اليومية":
   st.info(f"رقم السند التلقائي القادم: {(max_id + 1) if max_id else 1}")
 
   col1, col2 = st.columns(2)
-  t_date = col1.date_input("التاريخ", datetime.now(), key="q_date_v42")
-  t_type = col2.selectbox("نوع العملية", ["قبض", "صرف"], key="q_type_v42")
+  t_date = col1.date_input("التاريخ", datetime.now(), key="q_date_v43")
+  t_type = col2.selectbox("نوع العملية", ["قبض", "صرف"], key="q_type_v43")
 
   usd_amount_raw = col1.number_input(
       "المبلغ بالدولار ($)",
@@ -369,7 +388,7 @@ elif page == "📝 القيود اليومية":
       step=1.0,
       value=None,
       placeholder="اكتب المبلغ بالدولار مباشرة...",
-      key="q_usd_v42",
+      key="q_usd_v43",
   )
   lbp_amount_raw = col2.number_input(
       "المبلغ بالليرة (ل.ل)",
@@ -377,7 +396,7 @@ elif page == "📝 القيود اليومية":
       step=1000.0,
       value=None,
       placeholder="اكتب المبلغ بالليرة مباشرة...",
-      key="q_lbp_v42",
+      key="q_lbp_v43",
   )
 
   usd_amount = usd_amount_raw if usd_amount_raw is not None else 0.0
@@ -391,23 +410,23 @@ elif page == "📝 القيود اليومية":
   if lbp_amount > 0:
     st.warning(f"📊 قيمة الليرة تعادل: {converted_instant:,.0f}$")
 
-  fund = col1.selectbox("الصندوق المتأثر", funds_list, key="q_fund_v42")
+  fund = col1.selectbox("الصندوق المتأثر", funds_list, key="q_fund_v43")
   account_type = col2.selectbox(
       "نوع الحساب",
       ["عام", "حساب الشيخ عبد الكريم", "رواتب الموظفين"],
-      key="q_acc_type_v42",
+      key="q_acc_type_v43",
   )
 
   ref_name = ""
   if account_type == "رواتب الموظفين":
     if emp_list:
-      ref_name = st.selectbox("اختر الموظف", emp_list, key="q_emp_v42")
+      ref_name = st.selectbox("اختر الموظف", emp_list, key="q_emp_v43")
     else:
       st.error("⚠️ لا يوجد موظفون مسجلون.")
 
-  description = st.text_area("البيان / التفاصيل", key="q_desc_v42")
+  description = st.text_area("البيان / التفاصيل", key="q_desc_v43")
 
-  if st.button("حفظ السند المالي", key="q_save_btn_v42"):
+  if st.button("حفظ السند المالي", key="q_save_btn_v43"):
     if total_calculated_usd == 0:
       st.error("الرجاء إدخال قيمة مالية.")
     elif not description:
@@ -478,11 +497,10 @@ elif page == "📝 القيود اليومية":
       if row["ref_name"]:
         desc_text += f" ({row['ref_name']})"
 
-      # التعديل الهام لمنع تداخل النصوص والجهات
       details = f"【 {row['type']} 】  •  كاش: {u_str}  •  ليرة: {l_str}  •  الإجمالي: ${tot_val:,.0f}  •  {desc_text}"
 
       c3.write(details)
-      if c4.button("🗑️ حذف", key=f"del_v42_{row['id']}"):
+      if c4.button("🗑️ حذف", key=f"del_v43_{row['id']}"):
         conn = get_db_connection()
         c = conn.cursor()
         c.execute("DELETE FROM transactions WHERE id = ?", (row["id"],))
@@ -613,7 +631,7 @@ elif page == "👥 الرواتب":
   st.title("👥 إدارة رواتب الموظفين والعاملين")
   st.subheader("📝 إضافة موظف جديد")
   col1, col2 = st.columns(2)
-  emp_name = col1.text_input("اسم الموظف كاملاً", key="emp_n_v42")
+  emp_name = col1.text_input("اسم الموظف كاملاً", key="emp_n_v43")
 
   emp_salary_raw = col2.number_input(
       "الراتب الشهري المحدد ($)",
@@ -621,11 +639,11 @@ elif page == "👥 الرواتب":
       step=50,
       value=None,
       placeholder="مثال: 200...",
-      key="emp_s_v42",
+      key="emp_s_v43",
   )
   emp_salary = emp_salary_raw if emp_salary_raw is not None else 0.0
 
-  if st.button("حفظ الموظف الجديد", key="emp_save_v42"):
+  if st.button("حفظ الموظف الجديد", key="emp_save_v43"):
     if emp_name:
       conn = get_db_connection()
       c = conn.cursor()
@@ -664,7 +682,7 @@ elif page == "👥 الرواتب":
 elif page == "📊 التقارير":
   st.title("📊 التقارير المالية والطباعة")
   rep_type = st.selectbox(
-      "نوع التقرير المراد عرضه", ["يومي", "شهري", "سنوي"], key="rep_t_v42"
+      "نوع التقرير المراد عرضه", ["يومي", "شهري", "سنوي"], key="rep_t_v43"
   )
   conn = get_db_connection()
   df_report = pd.read_sql_query(
@@ -677,11 +695,11 @@ elif page == "📊 التقارير":
   else:
     df_report["parsed_date"] = pd.to_datetime(df_report["date"])
     if rep_type == "يومي":
-      sel_date = st.date_input("اختر اليوم", datetime.now(), key="rep_d_v42")
+      sel_date = st.date_input("اختر اليوم", datetime.now(), key="rep_d_v43")
       df_filtered = df_report[df_report["parsed_date"].dt.date == sel_date]
     elif rep_type == "شهري":
       sel_month = st.slider(
-          "اختر الشهر", 1, 12, int(datetime.now().month), key="rep_m_v42"
+          "اختر الشهر", 1, 12, int(datetime.now().month), key="rep_m_v43"
       )
       df_filtered = df_report[df_report["parsed_date"].dt.month == sel_month]
     else:
@@ -689,7 +707,7 @@ elif page == "📊 التقارير":
           "حدد السنة",
           min_value=2020,
           value=int(datetime.now().year),
-          key="rep_y_v42",
+          key="rep_y_v43",
       )
       df_filtered = df_report[df_report["parsed_date"].dt.year == sel_year]
 
@@ -771,7 +789,7 @@ elif page == "📊 التقارير":
           data=csv_data,
           file_name=f"mosque_report_{rep_type}_{datetime.now().strftime('%Y%m%d')}.csv",
           mime="text/csv",
-          key="export_csv_v42",
+          key="export_csv_v43",
       )
 
 # --- 7. الإعدادات ---
@@ -782,9 +800,9 @@ elif page == "⚙️ الإعدادات":
       "تحديث سعر صرف الدولار مقابل الليرة اللبنانية",
       value=dollar_rate,
       step=500.0,
-      key="set_r_v42",
+      key="set_r_v43",
   )
-  if st.button("تحديث سعر الصرف الآن", key="set_save_r_v42"):
+  if st.button("تحديث سعر الصرف الآن", key="set_save_r_v43"):
     conn = get_db_connection()
     c = conn.cursor()
     c.execute(
@@ -801,12 +819,12 @@ elif page == "⚙️ الإعدادات":
   uploaded_file = st.file_uploader(
       "📤 اختر ملف المحفوظات (Backup) من هاتفك لاستعادة الحسابات فوراً",
       type=["db"],
-      key="restore_uploader_v42",
+      key="restore_uploader_v43",
   )
   if uploaded_file is not None:
     if st.button(
         "⚙️ اضغط هنا لتأكيد استعادة البيانات الآن",
-        key="confirm_restore_btn_v42",
+        key="confirm_restore_btn_v43",
     ):
       try:
         db_data = uploaded_file.getbuffer()
@@ -828,16 +846,16 @@ elif page == "⚙️ الإعدادات":
         data=db_bytes,
         file_name=f"mosque_finance_backup_{current_date_str}.db",
         mime="application/octet-stream",
-        key="backup_btn_v42",
+        key="backup_btn_v43",
     )
 
   st.write("---")
   st.subheader("⚠️ منطقة خطر: تصفير العمليات والقيود")
   confirm_reset = st.checkbox(
       "أوافق على حذف وتصفير جميع السندات والعمليات الحسابية نهائياً من البرنامج",
-      key="confirm_reset_v42",
+      key="confirm_reset_v43",
   )
-  if st.button("🔴 تصفير كافة العمليات الحسابية الآن", key="reset_btn_v42"):
+  if st.button("🔴 تصفير كافة العمليات الحسابية الآن", key="reset_btn_v43"):
     if confirm_reset:
       try:
         conn = get_db_connection()
