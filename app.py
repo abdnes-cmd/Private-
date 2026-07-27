@@ -17,17 +17,25 @@ supabase = init_supabase()
 
 st.title("🕌 النظام المالي للمسجد")
 
-# 3. جلب سعر الصرف والصناديق من السحابة
+# 3. جلب سعر الصرف والصناديق من السحابة مع حماية ضد الأخطاء
 @st.cache_data(ttl=5)
 def get_funds():
-    res = supabase.table("funds").select("name").execute()
-    return [row["name"] for row in res.data]
+    try:
+        res = supabase.table("funds").select("name").execute()
+        if res.data:
+            return [row["name"] for row in res.data]
+    except Exception:
+        pass
+    return ["صندوق المسجد العام"]
 
 @st.cache_data(ttl=5)
 def get_rate():
-    res = supabase.table("settings").select("value").eq("key", "dollar_rate").execute()
-    if res.data:
-        return float(res.data[0]["value"])
+    try:
+        res = supabase.table("settings").select("value").eq("key", "dollar_rate").execute()
+        if res.data and len(res.data) > 0:
+            return float(res.data[0]["value"])
+    except Exception:
+        pass
     return 89500.0
 
 dollar_rate = get_rate()
@@ -47,7 +55,7 @@ with tab1:
     col1, col2 = st.columns(2)
     with col1:
         trans_type = st.radio("نوع الحركة", ["قبض (إيراد)", "صرف (مصروف)"], horizontal=True)
-        fund = st.selectbox("الصندوق المستهدف", funds_list if funds_list else ["صندوق المسجد العام"])
+        fund = st.selectbox("الصندوق المستهدف", funds_list)
         date_val = st.date_input("التاريخ", datetime.now())
         account_type = st.selectbox("تصنيف الحساب", ["تبرعات", "سلفة / ذمة", "صيانة ومصاريف", "رواتب", "أخرى"])
 
@@ -83,29 +91,30 @@ with tab1:
 # --- التبويب الثاني: عرض البيانات ---
 with tab2:
     st.subheader("📜 جدول القيود المالية")
-    res = supabase.table("transactions").select("*").order("id", desc=True).execute()
-    
-    if res.data:
-        df = pd.DataFrame(res.data)
-        # إعادة ترتيب وتسمية الأعمدة للوضوح
-        cols_order = ["id", "date", "type", "fund", "account_type", "amount_usd", "amount_lbp", "total_usd", "ref_name", "description"]
-        df = df[[c for c in cols_order if c in df.columns]]
-        df.rename(columns={
-            "id": "رقم السند",
-            "date": "التاريخ",
-            "type": "النوع",
-            "fund": "الصندوق",
-            "account_type": "التصنيف",
-            "amount_usd": "المبلغ ($)",
-            "amount_lbp": "المبلغ (ل.ل)",
-            "total_usd": "الإجمالي ($)",
-            "ref_name": "الاسم",
-            "description": "البيان"
-        }, inplace=True)
-        
-        st.dataframe(df, use_container_width=True)
-    else:
-        st.info("لا توجد قيود مسجلة حتى الآن.")
+    try:
+        res = supabase.table("transactions").select("*").order("id", desc=True).execute()
+        if res.data:
+            df = pd.DataFrame(res.data)
+            cols_order = ["id", "date", "type", "fund", "account_type", "amount_usd", "amount_lbp", "total_usd", "ref_name", "description"]
+            df = df[[c for c in cols_order if c in df.columns]]
+            df.rename(columns={
+                "id": "رقم السند",
+                "date": "التاريخ",
+                "type": "النوع",
+                "fund": "الصندوق",
+                "account_type": "التصنيف",
+                "amount_usd": "المبلغ ($)",
+                "amount_lbp": "المبلغ (ل.ل)",
+                "total_usd": "الإجمالي ($)",
+                "ref_name": "الاسم",
+                "description": "البيان"
+            }, inplace=True)
+            
+            st.dataframe(df, use_container_width=True)
+        else:
+            st.info("لا توجد قيود مسجلة حتى الآن.")
+    except Exception as e:
+        st.error("جاري تحميل البيانات...")
 
 # --- التبويب الثالث: إدارة الصناديق ---
 with tab3:
@@ -117,5 +126,5 @@ with tab3:
                 supabase.table("funds").insert({"name": new_fund}).execute()
                 st.success(f"تمت إضافة {new_fund} بنجاح!")
                 st.cache_data.clear()
-            except Exception as e:
+            except Exception:
                 st.error("الصندوق موجود مسبقاً أو حدث خطأ.")
