@@ -67,11 +67,10 @@ df = load_data()
 st.title("💰 إدارة الصندوق الشخصي")
 st.markdown("---")
 
-# --- خانة بارزة ومباشرة لرفع ملف البيانات السابق ---
+# --- خانة رفع الملفات واستعادة البيانات (في الأعلى مباشرة) ---
 st.subheader("📁 استعادة البيانات (رفع ملف سابق)")
 uploaded_file = st.file_uploader(
-    "قم برفع ملف البيانات القديم (CSV أو Excel) لتستعيد معلوماتك فوراً:",
-    type=["csv", "xlsx"],
+    "اختر ملف الـ CSV أو Excel القديم لاستعادة بياناتك:", type=["csv", "xlsx"]
 )
 
 if uploaded_file is not None:
@@ -81,6 +80,7 @@ if uploaded_file is not None:
     else:
       uploaded_df = pd.read_excel(uploaded_file)
 
+    # ضمان توفر الأعمدة الأساسية حتى لو كانت فارغة في الملف القديم
     required_columns = [
         "date",
         "type",
@@ -91,18 +91,15 @@ if uploaded_file is not None:
         "description",
         "notes",
     ]
+    for col in required_columns:
+      if col not in uploaded_df.columns:
+        uploaded_df[col] = ""
 
-    # التحقق من أن الملف يحتوي على البيانات الصحيحة
-    if any(col in uploaded_df.columns for col in required_columns):
-      # دمج البيانات القديمة مع الجديدة وتجنب التكرار
-      df = pd.concat([df, uploaded_df], ignore_index=True).drop_duplicates()
-      save_data(df)
-      st.success("✅ تم استعادة ودمج البيانات بنجاح! جاري تحديث الصفحة...")
-      st.rerun()
-    else:
-      st.error(
-          "❌ الملف المرفوع لا يحتوي على الأعمدة المطلوبة للصندوق الشخصي."
-      )
+    # دمج البيانات
+    df = pd.concat([df, uploaded_df], ignore_index=True)
+    save_data(df)
+    st.success("✅ تم استعادة ودمج البيانات بنجاح! سيتم تحديث الصفحة...")
+    st.rerun()
   except Exception as e:
     st.error(f"❌ حدث خطأ أثناء قراءة الملف: {e}")
 
@@ -111,7 +108,9 @@ st.markdown("---")
 # --- 1. حالة الصندوق والإجماليات في الأعلى ---
 st.subheader("📊 حالة الصندوق والإجماليات")
 
-if not df.empty:
+if not df.empty and "amount_usd" in df.columns:
+  # تحويل القيم إلى أرقام لتجنب أخطاء الجمع
+  df["amount_usd"] = pd.to_numeric(df["amount_usd"], errors="coerce").fillna(0)
   total_income = df[df["type"] == "مدخول"]["amount_usd"].sum()
   total_expense = df[df["type"] == "مصروف"]["amount_usd"].sum()
   net_balance = total_income - total_expense
