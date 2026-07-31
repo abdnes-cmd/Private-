@@ -3,213 +3,120 @@ import os
 import pandas as pd
 import streamlit as st
 
-# إعداد الصفحة
 st.set_page_config(
-    page_title="الصندوق الشخصي", page_icon="💰", layout="wide"
+    page_title="الصندوق الشخصي المطور", page_icon="💼", layout="wide"
 )
 
-DATA_FILE = "personal_box_data.csv"
+FILE_PATH = "my_cash_box.csv"
 
 
 def load_data():
-  if os.path.exists(DATA_FILE):
+  if os.path.exists(FILE_PATH):
     try:
-      df = pd.read_csv(DATA_FILE)
-      required_columns = [
-          "date",
-          "type",
-          "amount_usd",
-          "original_amount",
-          "currency",
-          "category",
-          "description",
-          "notes",
-      ]
-      for col in required_columns:
-        if col not in df.columns:
-          return pd.DataFrame(columns=required_columns)
-      return df
+      return pd.read_csv(FILE_PATH)
     except:
-      return pd.DataFrame(
-          columns=[
-              "date",
-              "type",
-              "amount_usd",
-              "original_amount",
-              "currency",
-              "category",
-              "description",
-              "notes",
-          ]
-      )
-  else:
-    return pd.DataFrame(
-        columns=[
-            "date",
-            "type",
-            "amount_usd",
-            "original_amount",
-            "currency",
-            "category",
-            "description",
-            "notes",
-        ]
-    )
+      return pd.DataFrame()
+  return pd.DataFrame()
 
 
 def save_data(df):
-  df.to_csv(DATA_FILE, index=False)
+  df.to_csv(FILE_PATH, index=False)
 
 
 df = load_data()
 
-# عنوان التطبيق
-st.title("💰 إدارة الصندوق الشخصي")
+st.title("💼 إدارة الصندوق الشخصي (النسخة المطورة)")
 st.markdown("---")
 
-# --- خانة رفع الملفات واستعادة البيانات (في الأعلى مباشرة) ---
-st.subheader("📁 استعادة البيانات (رفع ملف سابق)")
+# --- زر رفع واستعادة الملفات البارز ---
+st.info(
+    "💡 استعد بياناتك القديمة فوراً برفع ملف الـ CSV أو Excel الخاص بك هنا:"
+)
 uploaded_file = st.file_uploader(
-    "اختر ملف الـ CSV أو Excel القديم لاستعادة بياناتك:", type=["csv", "xlsx"]
+    "اختر الملف (CSV أو Excel)", type=["csv", "xlsx"]
 )
 
 if uploaded_file is not None:
   try:
     if uploaded_file.name.endswith(".csv"):
-      uploaded_df = pd.read_csv(uploaded_file)
+      imported_df = pd.read_csv(uploaded_file)
     else:
-      uploaded_df = pd.read_excel(uploaded_file)
+      imported_df = pd.read_excel(uploaded_file)
 
-    # ضمان توفر الأعمدة الأساسية حتى لو كانت فارغة في الملف القديم
-    required_columns = [
-        "date",
-        "type",
-        "amount_usd",
-        "original_amount",
-        "currency",
-        "category",
-        "description",
-        "notes",
-    ]
-    for col in required_columns:
-      if col not in uploaded_df.columns:
-        uploaded_df[col] = ""
-
-    # دمج البيانات
-    df = pd.concat([df, uploaded_df], ignore_index=True)
-    save_data(df)
-    st.success("✅ تم استعادة ودمج البيانات بنجاح! سيتم تحديث الصفحة...")
-    st.rerun()
-  except Exception as e:
-    st.error(f"❌ حدث خطأ أثناء قراءة الملف: {e}")
+    if not imported_df.empty:
+      df = pd.concat([df, imported_df], ignore_index=True)
+      save_data(df)
+      st.success(
+          "🎉 تمت استعادة ودمج البيانات بنجاح تام! جاري تحديث الصفحة..."
+      )
+      st.rerun()
+  except Exception as ex:
+    st.error(f"خطأ في قراءة الملف: {ex}")
 
 st.markdown("---")
 
-# --- 1. حالة الصندوق والإجماليات في الأعلى ---
-st.subheader("📊 حالة الصندوق والإجماليات")
-
+# --- الإجماليات ---
+st.subheader("📊 الملخص المالي")
 if not df.empty and "amount_usd" in df.columns:
-  # تحويل القيم إلى أرقام لتجنب أخطاء الجمع
   df["amount_usd"] = pd.to_numeric(df["amount_usd"], errors="coerce").fillna(0)
-  total_income = df[df["type"] == "مدخول"]["amount_usd"].sum()
-  total_expense = df[df["type"] == "مصروف"]["amount_usd"].sum()
-  net_balance = total_income - total_expense
+  inc = df[df["type"] == "مدخول"]["amount_usd"].sum()
+  exp = df[df["type"] == "مصروف"]["amount_usd"].sum()
+  net = inc - exp
 else:
-  total_income = 0.0
-  total_expense = 0.0
-  net_balance = 0.0
+  inc, exp, net = 0.0, 0.0, 0.0
 
-col1, col2, col3 = st.columns(3)
-col1.metric("إجمالي المداخيل ($)", f"${total_income:,.2f}")
-col2.metric("إجمالي المصاريف ($)", f"${total_expense:,.2f}")
-col3.metric("الصافي الحالي ($)", f"${net_balance:,.2f}")
+c1, c2, c3 = st.columns(3)
+c1.metric("إجمالي المداخيل ($)", f"${inc:,.2f}")
+c2.metric("إجمالي المصاريف ($)", f"${exp:,.2f}")
+c3.metric("الصافي ($)", f"${net:,.2f}")
 
 st.markdown("---")
 
-# --- 2. إضافة معاملة جديدة ---
+# --- إضافة معاملة ---
 st.subheader("➕ إضافة معاملة جديدة")
-
-with st.form("transaction_form", clear_on_submit=True):
-  c1, c2, c3, c4 = st.columns(4)
-
-  with c1:
-    t_date = st.date_input("التاريخ", value=datetime.today())
-    t_type = st.selectbox("النوع", ["مدخول", "مصروف"])
-
-  with c2:
-    currency = st.selectbox("عملة الدفع", ["دولار ($)", "ليرة لبنانية (ل.ل)"])
-    t_amount = st.number_input("المبلغ المدفوع", min_value=0.0, step=1.0)
-
-  with c3:
-    exchange_rate = st.number_input(
-        "سعر الصرف (ليرة/$)", min_value=1.0, value=89500.0, step=100.0
-    )
-    t_category = st.selectbox(
+with st.form("main_form", clear_on_submit=True):
+  col1, col2, col3, col4 = st.columns(4)
+  with col1:
+    d = st.date_input("التاريخ", value=datetime.today())
+    t = st.selectbox("النوع", ["مدخول", "مصروف"])
+  with col2:
+    cur = st.selectbox("العملة", ["دولار ($)", "ليرة لبنانية (ل.ل)"])
+    amt = st.number_input("المبلغ", min_value=0.0, step=1.0)
+  with col3:
+    rate = st.number_input("سعر الصرف", min_value=1.0, value=89500.0, step=100.0)
+    cat = st.selectbox(
         "الفئة",
-        [
-            "راتب",
-            "تجارة",
-            "أكل وشرب",
-            "فواتير",
-            "مواصلات",
-            "ترفيه",
-            "متفرقات",
-        ],
+        ["راتب", "تجارة", "أكل وشرب", "فواتير", "مواصلات", "ترفيه", "متفرقات"],
     )
+  with col4:
+    desc = st.text_input("البيان")
+    notes = st.text_input("ملاحظات")
 
-  with c4:
-    t_description = st.text_input("البيان / الوصف")
-    t_notes = st.text_input("ملاحظات")
-
-  submit_button = st.form_submit_button(label="حفظ المعاملة")
-
-  if submit_button:
-    if "ليرة" in currency:
-      amount_usd = t_amount / exchange_rate if exchange_rate > 0 else 0
-    else:
-      amount_usd = t_amount
-
+  if st.form_submit_button("حفظ"):
+    final_usd = amt / rate if "ليرة" in cur else amt
     new_row = {
-        "date": str(t_date),
-        "type": t_type,
-        "amount_usd": round(amount_usd, 2),
-        "original_amount": t_amount,
-        "currency": currency,
-        "category": t_category,
-        "description": t_description,
-        "notes": t_notes,
+        "date": str(d),
+        "type": t,
+        "amount_usd": round(final_usd, 2),
+        "original_amount": amt,
+        "currency": cur,
+        "category": cat,
+        "description": desc,
+        "notes": notes,
     }
     df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
     save_data(df)
-    st.success(f"✅ تم الحفظ! (المبلغ بالدولار: ${amount_usd:,.2f})")
+    st.success("تم الحفظ بنجاح!")
     st.rerun()
 
 st.markdown("---")
 
-# --- 3. سجل المعاملات وخيارات الحذف ---
-st.subheader("📋 جدول تنظيم المعاملات")
-
+# --- الجدول ---
+st.subheader("📋 السجل")
 if not df.empty:
-  display_df = df.reset_index().rename(columns={"index": "ID"})
-  display_df["ID"] = display_df["ID"] + 1
-  st.dataframe(display_df, use_container_width=True)
-
-  st.markdown("### 🗑️ حذف معاملة")
-  d_col1, d_col2 = st.columns([2, 1])
-  with d_col1:
-    delete_id = st.number_input(
-        "أدخل رقم (ID) المعاملة المراد حذفها",
-        min_value=1,
-        max_value=len(df),
-        step=1,
-    )
-  with d_col2:
-    st.write("")
-    st.write("")
-    if st.button("حذف المعاملة"):
-      df = df.drop(index=delete_id - 1).reset_index(drop=True)
-      save_data(df)
-      st.success(f"تم حذف المعاملة رقم {delete_id} بنجاح!")
-      st.rerun()
+  st.dataframe(
+      df.reset_index().rename(columns={"index": "ID"}).assign(ID=lambda x: x["ID"] + 1),
+      use_container_width=True,
+  )
 else:
-  st.info("ℹ️ لا توجد معاملات مسجلة حتى الآن.")
+  st.info("لا توجد بيانات حالياً.")
