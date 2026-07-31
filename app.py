@@ -67,41 +67,44 @@ df = load_data()
 st.title("💰 إدارة الصندوق الشخصي")
 st.markdown("---")
 
-# --- ميزة رفع ملف سابق لاستعادة البيانات ---
-with st.expander("📁 استعادة البيانات (رفع ملف CSV أو Excel سابق)"):
-  uploaded_file = st.file_uploader(
-      "اختر ملف البيانات القديم", type=["csv", "xlsx"]
-  )
-  if uploaded_file is not None:
-    try:
-      if uploaded_file.name.endswith(".csv"):
-        uploaded_df = pd.read_csv(uploaded_file)
-      else:
-        uploaded_df = pd.read_excel(uploaded_file)
+# --- خانة بارزة ومباشرة لرفع ملف البيانات السابق ---
+st.subheader("📁 استعادة البيانات (رفع ملف سابق)")
+uploaded_file = st.file_uploader(
+    "قم برفع ملف البيانات القديم (CSV أو Excel) لتستعيد معلوماتك فوراً:",
+    type=["csv", "xlsx"],
+)
 
-      # التأكد من دمج البيانات بشكل سليم
-      required_columns = [
-          "date",
-          "type",
-          "amount_usd",
-          "original_amount",
-          "currency",
-          "category",
-          "description",
-          "notes",
-      ]
-      # إذا كانت الأعمدة متوافقة
-      if all(col in uploaded_df.columns for col in required_columns):
-        df = pd.concat([df, uploaded_df], ignore_index=True).drop_duplicates()
-        save_data(df)
-        st.success("✅ تم استعادة ودمج البيانات بنجاح!")
-        st.rerun()
-      else:
-        st.error(
-            "❌ الأعمدة في الملف المرفوع غير متطابقة مع هيكل التطبيق."
-        )
-    except Exception as e:
-      st.error(f"❌ حدث خطأ أثناء قراءة الملف: {e}")
+if uploaded_file is not None:
+  try:
+    if uploaded_file.name.endswith(".csv"):
+      uploaded_df = pd.read_csv(uploaded_file)
+    else:
+      uploaded_df = pd.read_excel(uploaded_file)
+
+    required_columns = [
+        "date",
+        "type",
+        "amount_usd",
+        "original_amount",
+        "currency",
+        "category",
+        "description",
+        "notes",
+    ]
+
+    # التحقق من أن الملف يحتوي على البيانات الصحيحة
+    if any(col in uploaded_df.columns for col in required_columns):
+      # دمج البيانات القديمة مع الجديدة وتجنب التكرار
+      df = pd.concat([df, uploaded_df], ignore_index=True).drop_duplicates()
+      save_data(df)
+      st.success("✅ تم استعادة ودمج البيانات بنجاح! جاري تحديث الصفحة...")
+      st.rerun()
+    else:
+      st.error(
+          "❌ الملف المرفوع لا يحتوي على الأعمدة المطلوبة للصندوق الشخصي."
+      )
+  except Exception as e:
+    st.error(f"❌ حدث خطأ أثناء قراءة الملف: {e}")
 
 st.markdown("---")
 
