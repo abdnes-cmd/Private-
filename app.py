@@ -7,7 +7,7 @@ from datetime import datetime
 from supabase import create_client, Client
 
 # إعدادات الصفحة والهوية البصرية
-st.set_page_config(page_title="النظام المالي للمسجد", page_icon="🕌", layout="wide")
+st.set_page_config(page_title="النظام المالي لجامع الإحسان", page_icon="🕌", layout="wide")
 
 # تصميم مخصص لتعديل اتجاه وتلوين الواجهة
 st.markdown("""
@@ -157,7 +157,7 @@ def calculate_sheikh_final_balance(df):
 
 # --- القائمة الجانبية ---
 st.sidebar.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
-st.sidebar.markdown("<h2 style='text-align: center; color: #D4AF37; margin-top: 0px;'>🕌 مسجد الإحسان</h2>", unsafe_allow_html=True)
+st.sidebar.markdown("<h2 style='text-align: center; color: #D4AF37; margin-top: 0px;'>🕌 جامع الإحسان</h2>", unsafe_allow_html=True)
 st.sidebar.markdown("<p style='text-align: center; color: #004D40; font-weight: bold;'>مجدل عنجر</p>", unsafe_allow_html=True)
 st.sidebar.markdown("</div>", unsafe_allow_html=True)
 
@@ -172,7 +172,7 @@ page = st.sidebar.radio(
         "📊 التقارير",
         "⚙️ الإعدادات"
     ],
-    key="side_nav_v52"
+    key="side_nav_v53"
 )
 
 # زر إضافة لرفع رصيد الشيخ أحمد إلى 200$ (إضافة تسوية 50$)
@@ -198,7 +198,7 @@ if st.sidebar.button("رفع رصيد الشيخ أحمد إلى 200$"):
 
 # --- 1. الصفحة الرئيسية ---
 if page == "🏠 الرئيسية (لوحة التحكم)":
-    st.markdown("<h1 style='text-align: center;'>لوحة التحكم المالية (بالدولار)</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center;'>النظام المالي لجامع الإحسان</h1>", unsafe_allow_html=True)
     st.markdown(f"<p style='text-align: center; color: #C5A059;'>سعر الصرف المعتمد حالياً: {dollar_rate:,.0f} ل.ل للدولار</p>", unsafe_allow_html=True)
     st.write("---")
 
@@ -301,11 +301,11 @@ elif page == "📝 القيود اليومية":
     st.info(f"رقم السند التلقائي القادم: {(max_id + 1) if pd.notnull(max_id) else 1}")
 
     col1, col2 = st.columns(2)
-    t_date = col1.date_input("التاريخ", datetime.now(), key="q_date_v52")
-    t_type = col2.selectbox("نوع العملية", ["قبض", "صرف"], key="q_type_v52")
+    t_date = col1.date_input("التاريخ", datetime.now(), key="q_date_v53")
+    t_type = col2.selectbox("نوع العملية", ["قبض", "صرف"], key="q_type_v53")
 
-    usd_amount_raw = col1.number_input("المبلغ بالدولار ($)", min_value=0.0, step=1.0, value=None, placeholder="اكتب المبلغ بالدولار مباشرة...", key="q_usd_v52")
-    lbp_amount_raw = col2.number_input("المبلغ بالليرة (ل.ل)", min_value=0.0, step=1000.0, value=None, placeholder="اكتب المبلغ بالليرة مباشرة...", key="q_lbp_v52")
+    usd_amount_raw = col1.number_input("المبلغ بالدولار ($)", min_value=0.0, step=1.0, value=None, placeholder="اكتب المبلغ بالدولار مباشرة...", key="q_usd_v53")
+    lbp_amount_raw = col2.number_input("المبلغ بالليرة (ل.ل)", min_value=0.0, step=1000.0, value=None, placeholder="اكتب المبلغ بالليرة مباشرة...", key="q_lbp_v53")
 
     usd_amount = usd_amount_raw if usd_amount_raw is not None else 0.0
     lbp_amount = lbp_amount_raw if lbp_amount_raw is not None else 0.0
@@ -316,19 +316,19 @@ elif page == "📝 القيود اليومية":
     if lbp_amount > 0:
         st.warning(f"📊 قيمة الليرة تعادل: {converted_instant:,.0f}$")
 
-    fund = col1.selectbox("الصندوق المتأثر", funds_list, key="q_fund_v52")
-    account_type = col2.selectbox("نوع الحساب", ["عام", "حساب الشيخ عبد الكريم", "رواتب الموظفين"], key="q_acc_type_v52")
+    fund = col1.selectbox("الصندوق المتأثر", funds_list, key="q_fund_v53")
+    account_type = col2.selectbox("نوع الحساب", ["عام", "حساب الشيخ عبد الكريم", "رواتب الموظفين"], key="q_acc_type_v53")
 
     ref_name = ""
     if account_type == "رواتب الموظفين":
         if emp_list:
-            ref_name = st.selectbox("اختر الموظف", emp_list, key="q_emp_v52")
+            ref_name = st.selectbox("اختر الموظف", emp_list, key="q_emp_v53")
         else:
             st.error("⚠️ لا يوجد موظفون مسجلون.")
 
-    description = st.text_area("البيان / التفاصيل", key="q_desc_v52")
+    description = st.text_area("البيان / التفاصيل", key="q_desc_v53")
 
-    if st.button("حفظ السند المالي", key="q_save_btn_v52"):
+    if st.button("حفظ السند المالي", key="q_save_btn_v53"):
         if total_calculated_usd == 0:
             st.error("الرجاء إدخال قيمة مالية.")
         elif not description:
@@ -374,7 +374,7 @@ elif page == "📝 القيود اليومية":
             details = f"【 {row['type']} 】  •  كاش: {u_str}  •  ليرة: {l_str}  •  الإجمالي: ${tot_val:,.0f}  •  {desc_text}"
 
             c3.write(details)
-            if c4.button("🗑️ حذف", key=f"del_v52_{row['id']}"):
+            if c4.button("🗑️ حذف", key=f"del_v53_{row['id']}"):
                 supabase.table("transactions").delete().eq("id", row['id']).execute()
                 st.success("تم الحذف!")
                 safe_rerun()
@@ -447,11 +447,11 @@ elif page == "👥 الرواتب":
     st.title("👥 إدارة رواتب الموظفين والعاملين")
     st.subheader("📝 إضافة موظف جديد")
     col1, col2 = st.columns(2)
-    emp_name = col1.text_input("اسم الموظف كاملاً", key="emp_n_v52")
-    emp_salary_raw = col2.number_input("الراتب الشهري المحدد ($)", min_value=0, step=50, value=None, placeholder="مثال: 200...", key="emp_s_v52")
+    emp_name = col1.text_input("اسم الموظف كاملاً", key="emp_n_v53")
+    emp_salary_raw = col2.number_input("الراتب الشهري المحدد ($)", min_value=0, step=50, value=None, placeholder="مثال: 200...", key="emp_s_v53")
     emp_salary = emp_salary_raw if emp_salary_raw is not None else 0.0
 
-    if st.button("حفظ الموظف الجديد", key="emp_save_v52"):
+    if st.button("حفظ الموظف الجديد", key="emp_save_v53"):
         if emp_name:
             supabase.table("employees").upsert({"name": emp_name, "salary": emp_salary}).execute()
             st.success(f"تم حفظ الموظف {emp_name} بنجاح!")
@@ -476,7 +476,7 @@ elif page == "👥 الرواتب":
 # --- 6. التقارير ---
 elif page == "📊 التقارير":
     st.title("📊 التقارير المالية والطباعة")
-    rep_type = st.selectbox("نوع التقرير المراد عرضه", ["يومي", "شهري", "سنوي"], key="rep_t_v52")
+    rep_type = st.selectbox("نوع التقرير المراد عرضه", ["يومي", "شهري", "سنوي"], key="rep_t_v53")
     df_report = get_transactions_df()
 
     if df_report.empty:
@@ -484,13 +484,13 @@ elif page == "📊 التقارير":
     else:
         df_report['parsed_date'] = pd.to_datetime(df_report['date'])
         if rep_type == "يومي":
-            sel_date = st.date_input("اختر اليوم", datetime.now(), key="rep_d_v52")
+            sel_date = st.date_input("اختر اليوم", datetime.now(), key="rep_d_v53")
             df_filtered = df_report[df_report['parsed_date'].dt.date == sel_date]
         elif rep_type == "شهري":
-            sel_month = st.slider("اختر الشهر", 1, 12, int(datetime.now().month), key="rep_m_v52")
+            sel_month = st.slider("اختر الشهر", 1, 12, int(datetime.now().month), key="rep_m_v53")
             df_filtered = df_report[df_report['parsed_date'].dt.month == sel_month]
         else:
-            sel_year = st.number_input("حدد السنة", min_value=2020, value=int(datetime.now().year), key="rep_y_v52")
+            sel_year = st.number_input("حدد السنة", min_value=2020, value=int(datetime.now().year), key="rep_y_v53")
             df_filtered = df_report[df_report['parsed_date'].dt.year == sel_year]
 
         if df_filtered.empty:
@@ -519,13 +519,15 @@ elif page == "📊 التقارير":
             render_custom_html_table(headers, rows)
 
             st.write("---")
-            total_in_rep = df_filtered[df_filtered['type'] == 'قبض']['total_usd'].sum()
-            total_out_rep = df_filtered[df_filtered['type'] == 'صرف']['total_usd'].sum()
+            # استثناء صندوق الزكاة من إجمالي تقارير الفترة العامة
+            df_filtered_non_zakat = df_filtered[df_filtered['fund'] != 'الزكاة']
+            total_in_rep = df_filtered_non_zakat[df_filtered_non_zakat['type'] == 'قبض']['total_usd'].sum()
+            total_out_rep = df_filtered_non_zakat[df_filtered_non_zakat['type'] == 'صرف']['total_usd'].sum()
             net_rep = total_in_rep - total_out_rep
 
             mc1, mc2, mc3 = st.columns(3)
-            mc1.metric("🟢 إجمالي المقبوضات", f"${total_in_rep:,.0f}")
-            mc2.metric("🔴 إجمالي المصروفات", f"${total_out_rep:,.0f}")
+            mc1.metric("🟢 إجمالي المقبوضات (عدا الزكاة)", f"${total_in_rep:,.0f}")
+            mc2.metric("🔴 إجمالي المصروفات (عدا الزكاة)", f"${total_out_rep:,.0f}")
             mc3.metric("💰 الصافي للفترة", f"${net_rep:,.0f}")
 
             df_export = df_filtered.drop(columns=['parsed_date'])
@@ -536,15 +538,15 @@ elif page == "📊 التقارير":
                 data=csv_data,
                 file_name=f"mosque_report_{rep_type}_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv",
-                key="export_csv_v52"
+                key="export_csv_v53"
             )
 
 # --- 7. الإعدادات ---
 elif page == "⚙️ الإعدادات":
     st.title("⚙️ الإعدادات العامة وخيارات الاستيراد")
 
-    new_rate = st.number_input("تحديث سعر صرف الدولار مقابل الليرة اللبنانية", value=dollar_rate, step=500.0, key="set_r_v52")
-    if st.button("تحديث سعر الصرف الآن", key="set_save_r_v52"):
+    new_rate = st.number_input("تحديث سعر صرف الدولار مقابل الليرة اللبنانية", value=dollar_rate, step=500.0, key="set_r_v53")
+    if st.button("تحديث سعر الصرف الآن", key="set_save_r_v53"):
         supabase.table("settings").upsert({"key": "dollar_rate", "value": str(new_rate)}).execute()
         st.success("تم تحديث سعر الصرف بنجاح!")
         safe_rerun()
@@ -553,7 +555,7 @@ elif page == "⚙️ الإعدادات":
     st.subheader("📥 استيراد القيود من ملف قاعدة بيانات (.db) أو Excel / CSV")
     st.markdown("قم برفع ملف البيانات القديم وسيتم قراءته ورفعه للسحابة تلقائياً:")
     
-    uploaded_file = st.file_uploader("اختر ملف البيانات (.db أو Excel أو CSV)", key="import_file_v52")
+    uploaded_file = st.file_uploader("اختر ملف البيانات (.db أو Excel أو CSV)", key="import_file_v53")
     if uploaded_file is not None:
         if st.button("🚀 بدء رفع واستيراد القيود للسحابة", key="start_import_btn"):
             try:
@@ -622,8 +624,8 @@ elif page == "⚙️ الإعدادات":
 
     st.write("---")
     st.subheader("⚠️ منطقة خطر: تصفير العمليات والقيود")
-    confirm_reset = st.checkbox("أوافق على حذف وتصفير جميع السندات والعمليات الحسابية نهائياً من البرنامج", key="confirm_reset_v52")
-    if st.button("🔴 تصفير كافة العمليات الحسابية الآن", key="reset_btn_v52"):
+    confirm_reset = st.checkbox("أوافق على حذف وتصفير جميع السندات والعمليات الحسابية نهائياً من البرنامج", key="confirm_reset_v53")
+    if st.button("🔴 تصفير كافة العمليات الحسابية الآن", key="reset_btn_v53"):
         if confirm_reset:
             try:
                 supabase.table("transactions").delete().neq("id", -1).execute()
