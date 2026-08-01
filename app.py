@@ -1,24 +1,13 @@
-# افترض أن اسم العمود الذي يحدد نوع الحركة هو 'نوع' أو 'الحركة'، وعمود المبلغ هو 'المبلغ'
-# قم بتعديل أسماء الأعمدة أدناه لتعطابق الأسماء الموجودة لديك في الملف
+            st.write("---")
+            # فصل إجمالي المقبوضات عن إجمالي المصروفات محاسبياً
+            total_in_rep = df_filtered[df_filtered['type'] == 'قبض']['total_usd'].sum()
+            total_out_rep = df_filtered[df_filtered['type'] == 'صرف']['total_usd'].sum()
+            net_rep = total_in_rep - total_out_rep
+            
+            sum_lbp = df_filtered['amount_lbp'].sum()
 
-# حساب إجمالي المقبوضات (القبض)
-total_in = df[df['نوع الحركة'] == 'قبض']['المبلغ'].sum()
-
-# حساب إجمالي المصروفات (الصرف)
-total_out = df[df['نوع الحركة'] == 'صرف']['المبلغ'].sum()
-
-# حساب الصافي (المقبوضات - المصروفات)
-net_balance = total_in - total_out
-
-# عرض النتائج بشكل منظم في واجهة Streamlit
-st.markdown("---")
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.metric(label="إجمالي المقبوضات", value=f"${total_in:,.2f}")
-
-with col2:
-    st.metric(label="إجمالي المصروفات", value=f"${total_out:,.2f}")
-
-with col3:
-    st.metric(label="الصافي في الصندوق", value=f"${net_balance:,.2f}")
+            mc1, mc2, mc3, mc4 = st.columns(4)
+            mc1.metric("🟢 إجمالي المقبوضات", f"${total_in_rep:,.0f}")
+            mc2.metric("🔴 إجمالي المصروفات", f"${total_out_rep:,.0f}")
+            mc3.metric("💰 الصافي للفترة", f"${net_rep:,.0f}")
+            mc4.metric("💵 مجموع الليرة", f"{sum_lbp:,.0f} ل.ل")
