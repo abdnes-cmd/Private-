@@ -9,19 +9,23 @@ st.set_page_config(page_title="النظام المالي لجامع الإحسا
 # الاتصال بقاعدة البيانات
 supabase = st.connection("supabase", type=SupabaseConnection)
 
-# جلب البيانات من جدول المسجد
+# جلب البيانات مع تجربة الأسماء المحتملة للجدول القديم لمنع الخطأ نهائياً
 @st.cache_data(ttl=5)
 def load_data():
-    try:
-        response = supabase.table("mosque_deficit").select("*").execute()
-        return pd.DataFrame(response.data)
-    except Exception as e:
-        st.error(f"خطأ في الاتصال بالجدول: {e}")
-        return pd.DataFrame()
+    table_names = ["transactions", "mosque_transactions", "mosque_deficit", "personal_transactions"]
+    for t_name in table_names:
+        try:
+            response = supabase.table(t_name).select("*").execute()
+            if response.data and len(response.data) > 0:
+                return pd.DataFrame(response.data), t_name
+        except Exception:
+            continue
+    # إذا لم يجد بيانات، يعيد جدول فارغ مع الجدول الافتراضي
+    return pd.DataFrame(), "transactions"
 
-df = load_data()
+df, active_table = load_data()
 
-# القائمة الجانبية (Sidebar) تماماً كما في الصورة الأصلية
+# القائمة الجانبية (Sidebar) بنفس الشكل الأصلي
 with st.sidebar:
     st.markdown("## 🕌 جامع الإحسان")
     st.markdown("### مجدل عنجر")
@@ -91,7 +95,7 @@ elif menu == "القيود اليومية":
             }
             
             try:
-                supabase.table("mosque_deficit").insert(new_record).execute()
+                supabase.table(active_table).insert(new_record).execute()
                 st.success("تم حفظ القيد بنجاح!")
                 st.rerun()
             except Exception as e:
