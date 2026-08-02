@@ -182,7 +182,7 @@ page = st.sidebar.radio(
         "👤 حسابي الشخصي",
         "⚙️ الإعدادات"
     ],
-    key="side_nav_v55"
+    key="side_nav_v56"
 )
 
 # زر إضافة لرفع رصيد الشيخ أحمد إلى 200$
@@ -310,7 +310,7 @@ elif page == "📝 القيود اليومية":
     max_id = df_trans["id"].max() if not df_trans.empty else 0
     st.info(f"رقم السند التلقائي القادم: {(max_id + 1) if pd.notnull(max_id) else 1}")
 
-    with st.form("daily_form_v55", clear_on_submit=False):
+    with st.form("daily_form_v56", clear_on_submit=True):
         col1, col2 = st.columns(2)
         t_date = col1.date_input("التاريخ", datetime.now())
         t_type = col2.selectbox("نوع العملية", ["قبض", "صرف"])
@@ -387,7 +387,7 @@ elif page == "📝 القيود اليومية":
             details = f"【 {row['type']} 】  •  كاش: {u_str}  •  ليرة: {l_str}  •  الإجمالي: ${tot_val:,.0f}  •  {desc_text}"
 
             c3.write(details)
-            if c4.button("🗑️ حذف", key=f"del_v55_{row['id']}"):
+            if c4.button("🗑️ حذف", key=f"del_v56_{row['id']}"):
                 supabase.table("transactions").delete().eq("id", row['id']).execute()
                 st.success("تم الحذف!")
                 safe_rerun()
@@ -460,11 +460,11 @@ elif page == "👥 الرواتب":
     st.title("👥 إدارة رواتب الموظفين والعاملين")
     st.subheader("📝 إضافة موظف جديد")
     col1, col2 = st.columns(2)
-    emp_name = col1.text_input("اسم الموظف كاملاً", key="emp_n_v55")
-    emp_salary_raw = col2.number_input("الراتب الشهري المحدد ($)", min_value=0, step=50, value=0.0, placeholder="مثال: 200...", key="emp_s_v55")
+    emp_name = col1.text_input("اسم الموظف كاملاً", key="emp_n_v56")
+    emp_salary_raw = col2.number_input("الراتب الشهري المحدد ($)", min_value=0, step=50, value=0.0, placeholder="مثال: 200...", key="emp_s_v56")
     emp_salary = emp_salary_raw if emp_salary_raw is not None else 0.0
 
-    if st.button("حفظ الموظف الجديد", key="emp_save_v55"):
+    if st.button("حفظ الموظف الجديد", key="emp_save_v56"):
         if emp_name:
             supabase.table("employees").upsert({"name": emp_name, "salary": emp_salary}).execute()
             st.success(f"تم حفظ الموظف {emp_name} بنجاح!")
@@ -489,7 +489,7 @@ elif page == "👥 الرواتب":
 # --- 6. التقارير ---
 elif page == "📊 التقارير":
     st.title("📊 التقارير المالية والطباعة للمسجد")
-    rep_type = st.selectbox("نوع التقرير المراد عرضه", ["يومي", "شهري", "سنوي"], key="rep_t_v55")
+    rep_type = st.selectbox("نوع التقرير المراد عرضه", ["يومي", "شهري", "سنوي"], key="rep_t_v56")
     df_report = get_transactions_df()
 
     if df_report.empty:
@@ -497,13 +497,13 @@ elif page == "📊 التقارير":
     else:
         df_report['parsed_date'] = pd.to_datetime(df_report['date'])
         if rep_type == "يومي":
-            sel_date = st.date_input("اختر اليوم", datetime.now(), key="rep_d_v55")
+            sel_date = st.date_input("اختر اليوم", datetime.now(), key="rep_d_v56")
             df_filtered = df_report[df_report['parsed_date'].dt.date == sel_date]
         elif rep_type == "شهري":
-            sel_month = st.slider("اختر الشهر", 1, 12, int(datetime.now().month), key="rep_m_v55")
+            sel_month = st.slider("اختر الشهر", 1, 12, int(datetime.now().month), key="rep_m_v56")
             df_filtered = df_report[df_report['parsed_date'].dt.month == sel_month]
         else:
-            sel_year = st.number_input("حدد السنة", min_value=2020, value=int(datetime.now().year), key="rep_y_v55")
+            sel_year = st.number_input("حدد السنة", min_value=2020, value=int(datetime.now().year), key="rep_y_v56")
             df_filtered = df_report[df_report['parsed_date'].dt.year == sel_year]
 
         if df_filtered.empty:
@@ -550,7 +550,7 @@ elif page == "📊 التقارير":
                 data=csv_data,
                 file_name=f"mosque_report_{rep_type}_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv",
-                key="export_csv_v55"
+                key="export_csv_v56"
             )
 
 # --- 7. حسابي الشخصي ---
@@ -576,7 +576,7 @@ elif page == "👤 حسابي الشخصي":
     st.write("---")
     st.subheader("➕ إضافة حركة شخصية جديدة")
 
-    with st.form("personal_form_v55", clear_on_submit=False):
+    with st.form("personal_form_v56", clear_on_submit=True):
         col1, col2 = st.columns(2)
         p_date = col1.date_input("تاريخ الحركة", datetime.now())
         p_type = col2.selectbox("نوع الحركة", ["قبض (مدخول)", "صرف (مصروف)"])
@@ -618,51 +618,45 @@ elif page == "👤 حسابي الشخصي":
                 safe_rerun()
 
     st.write("---")
-    st.subheader("📋 سجل الحركات الشخصية السابقة")
+    st.subheader("📋 سجل الحركات الشخصية السابقة وعمليات الحذف")
 
     if df_personal.empty:
         st.info("💡 لا توجد حركات شخصية مسجلة بعد.")
     else:
-        for idx, row in df_personal.iterrows():
-            col_info, col_btn = st.columns([5, 1])
-            
-            with col_info:
-                t_color = "#004D40" if row.get('type') == 'قبض (مدخول)' else "#b45309"
-                rec_id = row.get('id', idx)
-                rec_date = row.get('date', '')
-                rec_type = row.get('type', '')
-                rec_cat = row.get('category', 'عام')
-                rec_desc = row.get('description', '')
-                rec_amount = row.get('total_usd', 0.0)
-                
-                st.markdown(f"""
-                    <div style="background-color: #ffffff; padding: 12px 15px; border-radius: 8px; border: 1px solid #e0e0e0; margin-bottom: 8px; direction: rtl; text-align: right; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                        <span style="background-color: {t_color}; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">{rec_type}</span>
-                        <span style="color: #666; font-size: 13px; margin-right: 10px;">📅 {rec_date}</span>
-                        <span style="color: #D4AF37; font-weight: bold; margin-right: 15px;">#سند {rec_id}</span>
-                        <span style="color: #333; font-weight: bold; float: left; font-size: 15px;">${float(rec_amount):,.0f}</span>
-                        <div style="margin-top: 8px; color: #444; font-size: 14px;">
-                            <strong>التصنيف:</strong> {rec_cat} | <strong>البيان:</strong> {rec_desc}
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
-                
-            with col_btn:
-                st.write("") 
-                if st.button("🗑️ حذف", key=f"del_pers_{row.get('id', idx)}"):
-                    try:
-                        supabase.table("personal_transactions").delete().eq("id", row['id']).execute()
-                        st.success("تم الحذف بنجاح!")
-                        safe_rerun()
-                    except Exception as e:
-                        st.error(f"خطأ في الحذف: {e}")
+        # عرض جدول ملون ومنسق للحركات الشخصية
+        headers = ["رقم السند", "التاريخ", "نوع الحركة", "التصنيف", "البيان والتفاصيل", "المبلغ الإجمالي ($)"]
+        rows = []
+        for _, row in df_personal.iterrows():
+            r_id = row.get('id', '')
+            r_date = row.get('date', '')
+            r_type = row.get('type', '')
+            r_cat = row.get('category', 'عام')
+            r_desc = row.get('description', '')
+            r_tot = float(row.get('total_usd', 0.0))
+            rows.append([f"#سند {r_id}", r_date, r_type, r_cat, r_desc, f"${r_tot:,.0f}"])
+        
+        render_custom_html_table(headers, rows)
+
+        # قسم منظم لحذف السندات برقم السند لتجنب تكرار أزرار الحذف الفوضوية
+        st.markdown("#### 🗑️ حذف حركة شخصية محددة")
+        del_col1, del_col2 = st.columns([2, 1])
+        personal_ids = df_personal['id'].tolist()
+        selected_id_to_delete = del_col1.selectbox("اختر رقم السند المطلوب حذفه:", personal_ids, key="sel_del_pers_id")
+        
+        if del_col2.button("حذف السند المختار", key="btn_del_pers_action"):
+            try:
+                supabase.table("personal_transactions").delete().eq("id", selected_id_to_delete).execute()
+                st.success(f"تم حذف السند رقم {selected_id_to_delete} بنجاح!")
+                safe_rerun()
+            except Exception as e:
+                st.error(f"خطأ في الحذف: {e}")
 
 # --- 8. الإعدادات ---
 elif page == "⚙️ الإعدادات":
     st.title("⚙️ الإعدادات العامة وخيارات الاستيراد")
 
-    new_rate = st.number_input("تحديث سعر صرف الدولار مقابل الليرة اللبنانية", value=dollar_rate, step=500.0, key="set_r_v55")
-    if st.button("تحديث سعر الصرف الآن", key="set_save_r_v55"):
+    new_rate = st.number_input("تحديث سعر صرف الدولار مقابل الليرة اللبنانية", value=dollar_rate, step=500.0, key="set_r_v56")
+    if st.button("تحديث سعر الصرف الآن", key="set_save_r_v56"):
         supabase.table("settings").upsert({"key": "dollar_rate", "value": str(new_rate)}).execute()
         st.success("تم تحديث سعر الصرف بنجاح!")
         safe_rerun()
@@ -670,9 +664,9 @@ elif page == "⚙️ الإعدادات":
     st.write("---")
     st.subheader("📥 استيراد قيود المسجد من ملف (.db أو Excel / CSV)")
     
-    uploaded_file = st.file_uploader("اختر ملف البيانات القديم للمسجد", key="import_file_v55")
+    uploaded_file = st.file_uploader("اختر ملف البيانات القديم للمسجد", key="import_file_v56")
     if uploaded_file is not None:
-        if st.button("🚀 بدء رفع واستيراد القيود للسحابة", key="start_import_btn_v55"):
+        if st.button("🚀 بدء رفع واستيراد القيود للسحابة", key="start_import_btn_v56"):
             try:
                 imported_count = 0
                 file_name_lower = uploaded_file.name.lower()
@@ -735,8 +729,8 @@ elif page == "⚙️ الإعدادات":
 
     st.write("---")
     st.subheader("⚠️ منطقة خطر: تصفير العمليات والقيود للمسجد")
-    confirm_reset = st.checkbox("أوافق على حذف وتصفير جميع السندات والعمليات الحسابية للمسجد نهائياً", key="confirm_reset_v55")
-    if st.button("🔴 تصفير كافة عمليات المسجد الآن", key="reset_btn_v55"):
+    confirm_reset = st.checkbox("أوافق على حذف وتصفير جميع السندات والعمليات الحسابية للمسجد نهائياً", key="confirm_reset_v56")
+    if st.button("🔴 تصفير كافة عمليات المسجد الآن", key="reset_btn_v56"):
         if confirm_reset:
             try:
                 supabase.table("transactions").delete().neq("id", -1).execute()
