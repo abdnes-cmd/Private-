@@ -624,13 +624,38 @@ elif page == "👤 حسابي الشخصي":
         st.info("💡 لا توجد حركات شخصية مسجلة بعد.")
     else:
         for idx, row in df_personal.iterrows():
-            c1, c2, c3 = st.columns([1, 4, 1])
-            c1.write(f"**سند شخصي #{row['id']}** ({row['type']})")
-            c2.write(f"📅 {row['date']} | **${float(row['total_usd']):,.0f}** | {row['description']}")
-            if c3.button("🗑️ حذف", key=f"del_pers_{row['id']}"):
-                supabase.table("personal_transactions").delete().eq("id", row['id']).execute()
-                st.success("تم الحذف بنجاح!")
-                safe_rerun()
+            col_info, col_btn = st.columns([5, 1])
+            
+            with col_info:
+                t_color = "#004D40" if row.get('type') == 'قبض (مدخول)' else "#b45309"
+                rec_id = row.get('id', idx)
+                rec_date = row.get('date', '')
+                rec_type = row.get('type', '')
+                rec_cat = row.get('category', 'عام')
+                rec_desc = row.get('description', '')
+                rec_amount = row.get('total_usd', 0.0)
+                
+                st.markdown(f"""
+                    <div style="background-color: #ffffff; padding: 12px 15px; border-radius: 8px; border: 1px solid #e0e0e0; margin-bottom: 8px; direction: rtl; text-align: right; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                        <span style="background-color: {t_color}; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">{rec_type}</span>
+                        <span style="color: #666; font-size: 13px; margin-right: 10px;">📅 {rec_date}</span>
+                        <span style="color: #D4AF37; font-weight: bold; margin-right: 15px;">#سند {rec_id}</span>
+                        <span style="color: #333; font-weight: bold; float: left; font-size: 15px;">${float(rec_amount):,.0f}</span>
+                        <div style="margin-top: 8px; color: #444; font-size: 14px;">
+                            <strong>التصنيف:</strong> {rec_cat} | <strong>البيان:</strong> {rec_desc}
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+            with col_btn:
+                st.write("") 
+                if st.button("🗑️ حذف", key=f"del_pers_{row.get('id', idx)}"):
+                    try:
+                        supabase.table("personal_transactions").delete().eq("id", row['id']).execute()
+                        st.success("تم الحذف بنجاح!")
+                        safe_rerun()
+                    except Exception as e:
+                        st.error(f"خطأ في الحذف: {e}")
 
 # --- 8. الإعدادات ---
 elif page == "⚙️ الإعدادات":
