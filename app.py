@@ -1,4 +1,4 @@
-Import streamlit as st
+import streamlit as st
 import pandas as pd
 import sqlite3
 import tempfile
@@ -326,7 +326,6 @@ elif page == "📝 القيود اليومية":
     max_id = df_trans["id"].max() if not df_trans.empty else 0
     st.info(f"رقم السند التلقائي القادم: {(max_id + 1) if pd.notnull(max_id) else 1}")
 
-    # استخدام st.selectbox خارجي لنوع العملية لكي يتم تحديث الخيارات ديناميكياً بدلاً من الاعتماد الكلي على حقول النموذج الثابتة
     t_type = st.selectbox("نوع العملية", ["صرف", "قبض"])
 
     with st.form("daily_form_v59", clear_on_submit=True):
@@ -347,7 +346,6 @@ elif page == "📝 القيود اليومية":
 
         fund = col1.selectbox("الصندوق المتأثر", funds_list)
         
-        # تخصيص خيارات نوع الحساب ديناميكياً بناءً على نوع العملية المختارة (صرف أو قبض)
         if t_type == "صرف":
             account_options = ["عام", "رواتب الموظفين", "حساب الشيخ عبد الكريم"]
         else:
