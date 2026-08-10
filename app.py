@@ -198,7 +198,7 @@ page = st.sidebar.radio(
         "👤 حسابي الشخصي",
         "⚙️ الإعدادات"
     ],
-    key="side_nav_v64"
+    key="side_nav_v65"
 )
 
 # زر إضافة لرفع رصيد الشيخ أحمد إلى 200$
@@ -322,75 +322,161 @@ if page == "🏠 الرئيسية (لوحة التحكم)":
 
 # --- 2. القيود اليومية ---
 elif page == "📝 القيود اليومية":
-    st.title("📝 تسجيل القيود اليومية للمسجد")
+    st.title("📝 تسجيل وتعديل القيود اليومية للمسجد")
     
     funds_list = get_funds()
     df_emps = get_employees_df()
     emp_list = df_emps["name"].dropna().tolist() if not df_emps.empty else []
     df_trans = get_transactions_df()
     
-    max_id = df_trans["id"].max() if not df_trans.empty else 0
-    st.info(f"رقم السند التلقائي القادم: {(max_id + 1) if pd.notnull(max_id) else 1}")
+    tab_add, tab_edit = st.tabs(["➕ إضافة سند جديد", "✏️ تعديل سند سابق"])
+    
+    with tab_add:
+        max_id = df_trans["id"].max() if not df_trans.empty else 0
+        st.info(f"رقم السند التلقائي القادم: {(max_id + 1) if pd.notnull(max_id) else 1}")
 
-    t_type = st.selectbox("نوع العملية", ["صرف", "قبض"])
+        t_type = st.selectbox("نوع العملية", ["صرف", "قبض"], key="add_t_type")
 
-    if t_type == "صرف":
-        account_options = ["عام", "رواتب الموظفين", "حساب الشيخ عبد الكريم"]
-    else:
-        account_options = ["عام", "حساب الشيخ عبد الكريم"]
-        
-    account_type = st.selectbox("نوع الحساب", account_options)
-
-    ref_name = ""
-    if account_type == "رواتب الموظفين":
-        if emp_list:
-            ref_name = st.selectbox("الموظف المستفيد:", emp_list, key="emp_select_dropdown_v64")
+        if t_type == "صرف":
+            account_options = ["عام", "رواتب الموظفين", "حساب الشيخ عبد الكريم"]
         else:
-            st.error("⚠️ لا يوجد موظفون مسجلون. يرجى إضافتهم من صفحة (👥 الرواتب) أولاً.")
+            account_options = ["عام", "حساب الشيخ عبد الكريم"]
+            
+        account_type = st.selectbox("نوع الحساب", account_options, key="add_acc_type")
 
-    with st.form("daily_form_v64", clear_on_submit=True):
-        col1, col2 = st.columns(2)
-        t_date = col1.date_input("التاريخ", datetime.now())
-        
-        usd_input_str = col1.text_input("المبلغ بالدولار ($)", value="", placeholder="اتركه فارغاً أو اكتب المبلغ...")
-        lbp_input_str = col2.text_input("المبلغ بالليرة (ل.ل)", value="", placeholder="اتركه فارغاً أو اكتب المبلغ...")
-
-        usd_amount = parse_float_input(usd_input_str)
-        lbp_amount = parse_float_input(lbp_input_str)
-
-        converted_instant = round(lbp_amount / dollar_rate) if dollar_rate > 0 else 0
-        total_calculated_usd = round(usd_amount + converted_instant)
-
-        if lbp_amount > 0:
-            st.warning(f"📊 قيمة الليرة تعادل: {converted_instant:,.0f}$")
-
-        fund = col1.selectbox("الصندوق المتأثر", funds_list)
-        description = st.text_area("البيان والتفاصيل")
-
-        submitted = st.form_submit_button("حفظ السند المالي للمسجد")
-        
-        if submitted:
-            if total_calculated_usd == 0:
-                st.error("الرجاء إدخال قيمة مالية.")
-            elif not description:
-                st.error("الرجاء إدخال البيان.")
-            elif account_type == "رواتب الموظفين" and not ref_name:
-                st.error("الرجاء اختيار اسم الموظف المستفيد من الراتب.")
+        ref_name = ""
+        if account_type == "رواتب الموظفين":
+            if emp_list:
+                ref_name = st.selectbox("الموظف المستفيد:", emp_list, key="emp_select_dropdown_v65")
             else:
-                payload = {
-                    "date": str(t_date),
-                    "description": description,
-                    "type": t_type,
-                    "amount_usd": usd_amount,
-                    "amount_lbp": lbp_amount,
-                    "total_usd": total_calculated_usd,
-                    "fund": fund,
-                    "account_type": account_type,
-                    "ref_name": ref_name
-                }
-                supabase.table("transactions").insert(payload).execute()
-                st.success("تم حفظ السند المالي بنجاح في السحابة!")
-                safe_rerun()
+                st.error("⚠️ لا يوجد موظفون مسجلون. يرجى إضافتهم من صفحة (👥 الرواتب) أولاً.")
+
+        with st.form("daily_form_v65", clear_on_submit=True):
+            col1, col2 = st.columns(2)
+            t_date = col1.date_input("التاريخ", datetime.now())
+            
+            usd_input_str = col1.text_input("المبلغ بالدولار ($)", value="", placeholder="اتركه فارغاً أو اكتب المبلغ...", key="add_usd_str")
+            lbp_input_str = col2.text_input("المبلغ بالليرة (ل.ل)", value="", placeholder="اتركه فارغاً أو اكتب المبلغ...", key="add_lbp_str")
+
+            usd_amount = parse_float_input(usd_input_str)
+            lbp_amount = parse_float_input(lbp_input_str)
+
+            converted_instant = round(lbp_amount / dollar_rate) if dollar_rate > 0 else 0
+            total_calculated_usd = round(usd_amount + converted_instant)
+
+            if lbp_amount > 0:
+                st.warning(f"📊 قيمة الليرة تعادل: {converted_instant:,.0f}$")
+
+            fund = col1.selectbox("الصندوق المتأثر", funds_list, key="add_fund_sel")
+            description = st.text_area("البيان والتفاصيل", key="add_desc_area")
+
+            submitted = st.form_submit_button("حفظ السند المالي للمسجد")
+            
+            if submitted:
+                if total_calculated_usd == 0:
+                    st.error("الرجاء إدخال قيمة مالية.")
+                elif not description:
+                    st.error("الرجاء إدخال البيان.")
+                elif account_type == "رواتب الموظفين" and not ref_name:
+                    st.error("الرجاء اختيار اسم الموظف المستفيد من الراتب.")
+                else:
+                    payload = {
+                        "date": str(t_date),
+                        "description": description,
+                        "type": t_type,
+                        "amount_usd": usd_amount,
+                        "amount_lbp": lbp_amount,
+                        "total_usd": total_calculated_usd,
+                        "fund": fund,
+                        "account_type": account_type,
+                        "ref_name": ref_name
+                    }
+                    supabase.table("transactions").insert(payload).execute()
+                    st.success("تم حفظ السند المالي بنجاح في السحابة!")
+                    safe_rerun()
+
+    with tab_edit:
+        st.subheader("✏️ تعديل سند مالي سابق للمسجد")
+        if df_trans.empty:
+            st.info("💡 لا توجد سندات مسجلة للتعديل.")
+        else:
+            trans_ids = df_trans['id'].tolist()
+            selected_trans_id = st.selectbox("اختر رقم السند المطلوب تعديله:", trans_ids, key="edit_trans_sel_id")
+            
+            row_to_edit = df_trans[df_trans['id'] == selected_trans_id].iloc[0]
+            
+            with st.form(f"edit_trans_form_{selected_trans_id}"):
+                e_date_val = datetime.strptime(str(row_to_edit['date'])[:10], "%Y-%m-%d").date() rescue datetime.now().date() if False else datetime.now().date()
+                try:
+                    e_date_val = datetime.strptime(str(row_to_edit['date'])[:10], "%Y-%m-%d").date()
+                except:
+                    pass
+                
+                ed_date = st.date_input("التاريخ", e_date_val)
+                
+                curr_t_type = row_to_edit.get('type', 'صرف')
+                ed_type_idx = 0 if curr_t_type == 'صرف' else 1
+                ed_type = st.selectbox("نوع العملية", ["صرف", "قبض"], index=ed_type_idx, key="ed_t_type")
+                
+                curr_acc = row_to_edit.get('account_type', 'عام')
+                acc_options = ["عام", "رواتب الموظفين", "حساب الشيخ عبد الكريم"] if ed_type == "صرف" else ["عام", "حساب الشيخ عبد الكريم"]
+                try:
+                    acc_idx = acc_options.index(curr_acc)
+                except:
+                    acc_idx = 0
+                ed_acc_type = st.selectbox("نوع الحساب", acc_options, index=acc_idx, key="ed_acc_type")
+                
+                ed_ref_name = row_to_edit.get('ref_name', '')
+                if ed_acc_type == "رواتب الموظفين" and emp_list:
+                    try:
+                        ref_idx = emp_list.index(ed_ref_name)
+                    except:
+                        ref_idx = 0
+                    ed_ref_name = st.selectbox("الموظف المستفيد:", emp_list, index=ref_idx, key="ed_emp_dropdown")
+                
+                col_e1, col_e2 = st.columns(2)
+                ed_usd_val = float(row_to_edit.get('amount_usd', 0.0) or 0.0)
+                ed_lbp_val = float(row_to_edit.get('amount_lbp', 0.0) or 0.0)
+                
+                ed_usd_str = col_e1.text_input("المبلغ بالدولار ($)", value=str(ed_usd_val) if ed_usd_val > 0 else "")
+                ed_lbp_str = col_e2.text_input("المبلغ بالليرة (ل.ل)", value=str(ed_lbp_val) if ed_lbp_val > 0 else "")
+                
+                f_parsed_usd = parse_float_input(ed_usd_str)
+                f_parsed_lbp = parse_float_input(ed_lbp_str)
+                f_conv = round(f_parsed_lbp / dollar_rate) if dollar_rate > 0 else 0
+                f_tot = round(f_parsed_usd + f_conv)
+                
+                curr_fund = row_to_edit.get('fund', 'المسجد العامة')
+                try:
+                    f_idx = funds_list.index(curr_fund)
+                except:
+                    f_idx = 0
+                ed_fund = col_e1.selectbox("الصندوق المتأثر", funds_list, index=f_idx, key="ed_fund_sel")
+                
+                ed_desc = st.text_area("البيان والتفاصيل", value=str(row_to_edit.get('description', '')))
+                
+                ed_submitted = st.form_submit_button("حفظ التعديلات على السند")
+                
+                if ed_submitted:
+                    if f_tot == 0:
+                        st.error("الرجاء إدخال مبلغ صحيح.")
+                    elif not ed_desc:
+                        st.error("الرجاء إدخال البيان.")
+                    else:
+                        upd_payload = {
+                            "date": str(ed_date),
+                            "description": ed_desc,
+                            "type": ed_type,
+                            "amount_usd": f_parsed_usd,
+                            "amount_lbp": f_parsed_lbp,
+                            "total_usd": f_tot,
+                            "fund": ed_fund,
+                            "account_type": ed_acc_type,
+                            "ref_name": ed_ref_name if ed_acc_type == "رواتب الموظفين" else ""
+                        }
+                        supabase.table("transactions").update(upd_payload).eq("id", selected_trans_id).execute()
+                        st.success(f"تم تحديث السند رقم {selected_trans_id} بنجاح!")
+                        safe_rerun()
 
     st.write("---")
     st.subheader("📋 حذف السندات المسجلة")
@@ -417,7 +503,7 @@ elif page == "📝 القيود اليومية":
             details = f"【 {row['type']} 】  •  كاش: {u_str}  •  ليرة: {l_str}  •  الإجمالي: ${tot_val:,.0f}  •  {desc_text}"
 
             c3.write(details)
-            if c4.button("🗑️ حذف", key=f"del_v64_{row['id']}"):
+            if c4.button("🗑️ حذف", key=f"del_v65_{row['id']}"):
                 supabase.table("transactions").delete().eq("id", row['id']).execute()
                 st.success("تم الحذف!")
                 safe_rerun()
@@ -491,11 +577,11 @@ elif page == "👥 الرواتب":
     st.title("👥 إدارة رواتب الموظفين والعاملين")
     st.subheader("📝 إضافة موظف جديد")
     col1, col2 = st.columns(2)
-    emp_name = col1.text_input("اسم الموظف كاملاً", key="emp_n_v64")
-    emp_salary_str = col2.text_input("الراتب الشهري المحدد ($)", value="", placeholder="مثال: 200...", key="emp_s_v64")
+    emp_name = col1.text_input("اسم الموظف كاملاً", key="emp_n_v65")
+    emp_salary_str = col2.text_input("الراتب الشهري المحدد ($)", value="", placeholder="مثال: 200...", key="emp_s_v65")
     emp_salary = parse_float_input(emp_salary_str)
 
-    if st.button("حفظ الموظف الجديد", key="emp_save_v64"):
+    if st.button("حفظ الموظف الجديد", key="emp_save_v65"):
         if emp_name:
             clean_name = emp_name.replace('*', '').strip()
             supabase.table("employees").upsert({"name": clean_name, "salary": emp_salary}).execute()
@@ -514,7 +600,7 @@ elif page == "👥 الرواتب":
             ec1.write(f"👤 **{e_row['name']}**")
             s_sal_disp = f"${e_row['salary']:,.0f}" if e_row['salary'] > 0 else "-"
             ec2.write(f"💵 الراتب: **{s_sal_disp}**")
-            if ec3.button("🗑️ حذف", key=f"del_emp_v64_{e_row['id']}"):
+            if ec3.button("🗑️ حذف", key=f"del_emp_v65_{e_row['id']}"):
                 supabase.table("employees").delete().eq("id", e_row['id']).execute()
                 st.success("تم الحذف!")
                 safe_rerun()
@@ -522,7 +608,7 @@ elif page == "👥 الرواتب":
 # --- 6. التقارير ---
 elif page == "📊 التقارير":
     st.title("📊 التقارير المالية والطباعة للمسجد")
-    rep_type = st.selectbox("نوع التقرير المراد عرضه", ["يومي", "شهري", "سنوي"], key="rep_t_v64")
+    rep_type = st.selectbox("نوع التقرير المراد عرضه", ["يومي", "شهري", "سنوي"], key="rep_t_v65")
     df_report = get_transactions_df()
 
     if df_report.empty:
@@ -530,13 +616,13 @@ elif page == "📊 التقارير":
     else:
         df_report['parsed_date'] = pd.to_datetime(df_report['date'])
         if rep_type == "يومي":
-            sel_date = st.date_input("اختر اليوم", datetime.now(), key="rep_d_v64")
+            sel_date = st.date_input("اختر اليوم", datetime.now(), key="rep_d_v65")
             df_filtered = df_report[df_report['parsed_date'].dt.date == sel_date]
         elif rep_type == "شهري":
-            sel_month = st.slider("اختر الشهر", 1, 12, int(datetime.now().month), key="rep_m_v64")
+            sel_month = st.slider("اختر الشهر", 1, 12, int(datetime.now().month), key="rep_m_v65")
             df_filtered = df_report[df_report['parsed_date'].dt.month == sel_month]
         else:
-            sel_year = st.number_input("حدد السنة", min_value=2020, value=int(datetime.now().year), key="rep_y_v64")
+            sel_year = st.number_input("حدد السنة", min_value=2020, value=int(datetime.now().year), key="rep_y_v65")
             df_filtered = df_report[df_report['parsed_date'].dt.year == sel_year]
 
         if df_filtered.empty:
@@ -613,7 +699,7 @@ elif page == "📊 التقارير":
                 data=excel_data,
                 file_name=f"mosque_report_{rep_type}_{datetime.now().strftime('%Y%m%d')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key="export_excel_v64"
+                key="export_excel_v65"
             )
 
 # --- 7. حسابي الشخصي ---
@@ -637,53 +723,114 @@ elif page == "👤 حسابي الشخصي":
     pc3.metric("🔴 إجمالي المصاريف الشخصية ($)", f"${p_out:,.0f}" if p_out > 0 else "-")
 
     st.write("---")
-    st.subheader("➕ إضافة حركة شخصية جديدة")
+    
+    p_tab_add, p_tab_edit = st.tabs(["➕ إضافة حركة شخصية", "✏️ تعديل حركة شخصية"])
+    
+    with p_tab_add:
+        st.subheader("➕ إضافة حركة شخصية جديدة")
+        default_type_index = 1 if p_out >= p_in else 0
 
-    default_type_index = 1 if p_out >= p_in else 0
+        with st.form("personal_form_v65", clear_on_submit=True):
+            col1, col2 = st.columns(2)
+            p_date = col1.date_input("تاريخ الحركة", datetime.now(), key="p_add_date")
+            p_type = col2.selectbox("نوع الحركة", ["قبض (مدخول)", "صرف (مصروف)"], index=default_type_index, key="p_add_type")
 
-    with st.form("personal_form_v64", clear_on_submit=True):
-        col1, col2 = st.columns(2)
-        p_date = col1.date_input("تاريخ الحركة", datetime.now())
-        p_type = col2.selectbox("نوع الحركة", ["قبض (مدخول)", "صرف (مصروف)"], index=default_type_index)
+            p_usd_str = col1.text_input("المبلغ بالدولار ($)", value="", placeholder="اتركه فارغاً أو اكتب المبلغ...", key="p_add_usd")
+            p_lbp_str = col2.text_input("المبلغ بالليرة (ل.ل)", value="", placeholder="اتركه فارغاً أو اكتب المبلغ...", key="p_add_lbp")
 
-        p_usd_str = col1.text_input("المبلغ بالدولار ($)", value="", placeholder="اتركه فارغاً أو اكتب المبلغ...")
-        p_lbp_str = col2.text_input("المبلغ بالليرة (ل.ل)", value="", placeholder="اتركه فارغاً أو اكتب المبلغ...")
+            p_usd = parse_float_input(p_usd_str)
+            p_lbp = parse_float_input(p_lbp_str)
 
-        p_usd = parse_float_input(p_usd_str)
-        p_lbp = parse_float_input(p_lbp_str)
+            p_conv = round(p_lbp / dollar_rate) if dollar_rate > 0 else 0
+            p_total = round(p_usd + p_conv)
 
-        p_conv = round(p_lbp / dollar_rate) if dollar_rate > 0 else 0
-        p_total = round(p_usd + p_conv)
+            if p_lbp > 0:
+                st.warning(f"📊 قيمة الليرة تعادل: {p_conv:,.0f}$ (الإجمالي: ${p_total:,.0f})")
 
-        if p_lbp > 0:
-            st.warning(f"📊 قيمة الليرة تعادل: {p_conv:,.0f}$ (الإجمالي: ${p_total:,.0f})")
+            p_category = st.text_input("التصنيف (مثال: راتب شخصي، أجار منزل، طعام...)", key="p_add_cat")
+            p_desc = st.text_area("البيان والتفاصيل الشخصية", key="p_add_desc")
 
-        p_category = st.text_input("التصنيف (مثال: راتب شخصي، أجار منزل، طعام...)")
-        p_desc = st.text_area("البيان والتفاصيل الشخصية")
+            p_submitted = st.form_submit_button("حفظ الحركة الشخصية")
+            
+            if p_submitted:
+                if p_total == 0:
+                    st.error("الرجاء إدخال مبلغ صحيح.")
+                elif not p_desc:
+                    st.error("الرجاء إدخال البيان.")
+                else:
+                    payload = {
+                        "date": str(p_date),
+                        "description": p_desc,
+                        "type": p_type,
+                        "amount_usd": p_usd,
+                        "amount_lbp": p_lbp,
+                        "total_usd": p_total,
+                        "category": p_category if p_category else "عام"
+                    }
+                    supabase.table("personal_transactions").insert(payload).execute()
+                    st.success("تم حفظ الحركة الشخصية بنجاح!")
+                    safe_rerun()
 
-        p_submitted = st.form_submit_button("حفظ الحركة الشخصية")
-        
-        if p_submitted:
-            if p_total == 0:
-                st.error("الرجاء إدخال مبلغ صحيح.")
-            elif not p_desc:
-                st.error("الرجاء إدخال البيان.")
-            else:
-                payload = {
-                    "date": str(p_date),
-                    "description": p_desc,
-                    "type": p_type,
-                    "amount_usd": p_usd,
-                    "amount_lbp": p_lbp,
-                    "total_usd": p_total,
-                    "category": p_category if p_category else "عام"
-                }
-                supabase.table("personal_transactions").insert(payload).execute()
-                st.success("تم حفظ الحركة الشخصية بنجاح!")
-                safe_rerun()
+    with p_tab_edit:
+        st.subheader("✏️ تعديل حركة شخصية سابقة")
+        if df_personal.empty:
+            st.info("💡 لا توجد حركات شخصية للتعديل.")
+        else:
+            pers_ids = df_personal['id'].tolist()
+            sel_pers_edit_id = st.selectbox("اختر رقم السند الشخصي المطلوب تعديله:", pers_ids, key="sel_edit_pers_id")
+            
+            p_row_to_edit = df_personal[df_personal['id'] == sel_pers_edit_id].iloc[0]
+            
+            with st.form(f"edit_pers_form_{sel_pers_edit_id}"):
+                try:
+                    pe_date_val = datetime.strptime(str(p_row_to_edit['date'])[:10], "%Y-%m-%d").date()
+                except:
+                    pe_date_val = datetime.now().date()
+                
+                pe_date = st.date_input("التاريخ", pe_date_val)
+                
+                curr_p_type = p_row_to_edit.get('type', 'صرف (مصروف)')
+                pe_type_idx = 0 if curr_p_type == 'قبض (مدخول)' else 1
+                pe_type = st.selectbox("نوع الحركة", ["قبض (مدخول)", "صرف (مصروف)"], index=pe_type_idx, key="pe_type_sel")
+                
+                pe_col1, pe_col2 = st.columns(2)
+                pe_usd_val = float(p_row_to_edit.get('amount_usd', 0.0) or 0.0)
+                pe_lbp_val = float(p_row_to_edit.get('amount_lbp', 0.0) or 0.0)
+                
+                pe_usd_str = pe_col1.text_input("المبلغ بالدولار ($)", value=str(pe_usd_val) if pe_usd_val > 0 else "", key="pe_usd_input")
+                pe_lbp_str = pe_col2.text_input("المبلغ بالليرة (ل.ل)", value=str(pe_lbp_val) if pe_lbp_val > 0 else "", key="pe_lbp_input")
+                
+                pe_f_usd = parse_float_input(pe_usd_str)
+                pe_f_lbp = parse_float_input(pe_lbp_str)
+                pe_conv = round(pe_f_lbp / dollar_rate) if dollar_rate > 0 else 0
+                pe_tot = round(pe_f_usd + pe_conv)
+                
+                pe_cat = st.text_input("التصنيف", value=str(p_row_to_edit.get('category', 'عام')), key="pe_cat_input")
+                pe_desc = st.text_area("البيان والتفاصيل الشخصية", value=str(p_row_to_edit.get('description', '')), key="pe_desc_input")
+                
+                pe_submitted = st.form_submit_button("حفظ التعديلات على الحركة الشخصية")
+                
+                if pe_submitted:
+                    if pe_tot == 0:
+                        st.error("الرجاء إدخال مبلغ صحيح.")
+                    elif not pe_desc:
+                        st.error("الرجاء إدخال البيان.")
+                    else:
+                        pe_payload = {
+                            "date": str(pe_date),
+                            "description": pe_desc,
+                            "type": pe_type,
+                            "amount_usd": pe_f_usd,
+                            "amount_lbp": pe_f_lbp,
+                            "total_usd": pe_tot,
+                            "category": pe_cat if pe_cat else "عام"
+                        }
+                        supabase.table("personal_transactions").update(pe_payload).eq("id", sel_pers_edit_id).execute()
+                        st.success(f"تم تحديث الحركة الشخصية رقم {sel_pers_edit_id} بنجاح!")
+                        safe_rerun()
 
     st.write("---")
-    st.subheader("📋 سجل الحركات الشخصية السابقة وعمليات الحذف")
+    st.subheader("📋 سجل الحركات الشخصية السابقة وتصدير التقارير")
 
     if df_personal.empty:
         st.info("💡 لا توجد حركات شخصية مسجلة بعد.")
@@ -701,12 +848,51 @@ elif page == "👤 حسابي الشخصي":
         
         render_custom_html_table(headers, rows)
 
+        # زر تحميل تقرير الحساب الشخصي كملف Excel منسق
+        p_output = io.BytesIO()
+        with pd.ExcelWriter(p_output, engine='openpyxl') as writer:
+            df_personal.to_excel(writer, index=False, sheet_name='PersonalReport')
+            
+            p_workbook = writer.book
+            p_worksheet = writer.sheets['PersonalReport']
+            p_worksheet.sheet_view.rightToLeft = True
+            
+            p_header_fill = PatternFill(start_color="004D40", end_color="004D40", fill_type="solid")
+            p_header_font = Font(color="D4AF37", bold=True)
+            
+            for col_num, value in enumerate(df_personal.columns.values, 1):
+                cell = p_worksheet.cell(row=1, column=col_num)
+                cell.fill = p_header_fill
+                cell.font = p_header_font
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+                p_worksheet.column_dimensions[get_column_letter(col_num)].width = 20
+
+            p_row_fill_odd = PatternFill(start_color="E8F5E9", end_color="E8F5E9", fill_type="solid")
+            p_row_fill_even = PatternFill(start_color="FEFDE8", end_color="FEFDE8", fill_type="solid")
+            
+            for row_num in range(2, p_worksheet.max_row + 1):
+                fill = p_row_fill_odd if row_num % 2 == 0 else p_row_fill_even
+                for col_num in range(1, p_worksheet.max_column + 1):
+                    cell = p_worksheet.cell(row=row_num, column=col_num)
+                    cell.fill = fill
+                    cell.alignment = Alignment(horizontal="right")
+
+        p_excel_data = p_output.getvalue()
+
+        st.download_button(
+            label="📥 تحميل تقرير الحساب الشخصي المنسق (xlsx)",
+            data=p_excel_data,
+            file_name=f"personal_report_{datetime.now().strftime('%Y%m%d')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            key="export_personal_excel_v65"
+        )
+
         st.markdown("#### 🗑️ حذف حركة شخصية محددة")
         del_col1, del_col2 = st.columns([2, 1])
         personal_ids = df_personal['id'].tolist()
-        selected_id_to_delete = del_col1.selectbox("اختر رقم السند المطلوب حذفه:", personal_ids, key="sel_del_pers_id_v64")
+        selected_id_to_delete = del_col1.selectbox("اختر رقم السند المطلوب حذفه:", personal_ids, key="sel_del_pers_id_v65")
         
-        if del_col2.button("حذف السند المختار", key="btn_del_pers_action_v64"):
+        if del_col2.button("حذف السند المختار", key="btn_del_pers_action_v65"):
             try:
                 supabase.table("personal_transactions").delete().eq("id", selected_id_to_delete).execute()
                 st.success(f"تم حذف السند رقم {selected_id_to_delete} بنجاح!")
@@ -718,9 +904,9 @@ elif page == "👤 حسابي الشخصي":
 elif page == "⚙️ الإعدادات":
     st.title("⚙️ الإعدادات العامة وخيارات الاستيراد")
 
-    new_rate_str = st.text_input("تحديث سعر صرف الدولار مقابل الليرة اللبنانية", value=str(dollar_rate), key="set_r_v64")
+    new_rate_str = st.text_input("تحديث سعر صرف الدولار مقابل الليرة اللبنانية", value=str(dollar_rate), key="set_r_v65")
     new_rate = parse_float_input(new_rate_str)
-    if st.button("تحديث سعر الصرف الآن", key="set_save_r_v64"):
+    if st.button("تحديث سعر الصرف الآن", key="set_save_r_v65"):
         if new_rate > 0:
             supabase.table("settings").upsert({"key": "dollar_rate", "value": str(new_rate)}).execute()
             st.success("تم تحديث سعر الصرف بنجاح!")
@@ -731,9 +917,9 @@ elif page == "⚙️ الإعدادات":
     st.write("---")
     st.subheader("📥 استيراد قيود المسجد من ملف (.db أو Excel / CSV)")
     
-    uploaded_file = st.file_uploader("اختر ملف البيانات القديم للمسجد", key="import_file_v64")
+    uploaded_file = st.file_uploader("اختر ملف البيانات القديم للمسجد", key="import_file_v65")
     if uploaded_file is not None:
-        if st.button("🚀 بدء رفع واستيراد القيود للسحابة", key="start_import_btn_v64"):
+        if st.button("🚀 بدء رفع واستيراد القيود للسحابة", key="start_import_btn_v65"):
             try:
                 imported_count = 0
                 file_name_lower = uploaded_file.name.lower()
@@ -796,8 +982,8 @@ elif page == "⚙️ الإعدادات":
 
     st.write("---")
     st.subheader("⚠️ منطقة خطر: تصفير العمليات والقيود للمسجد")
-    confirm_reset = st.checkbox("أوافق على حذف وتصفير جميع السندات والعمليات الحسابية للمسجد نهائياً", key="confirm_reset_v64")
-    if st.button("🔴 تصفير كافة عمليات المسجد الآن", key="reset_btn_v64"):
+    confirm_reset = st.checkbox("أوافق على حذف وتصفير جميع السندات والعمليات الحسابية للمسجد نهائياً", key="confirm_reset_v65")
+    if st.button("🔴 تصفير كافة عمليات المسجد الآن", key="reset_btn_v65"):
         if confirm_reset:
             try:
                 supabase.table("transactions").delete().neq("id", -1).execute()
