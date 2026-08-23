@@ -1,4 +1,4 @@
-Import streamlit as st
+import streamlit as str
 import pandas as pd
 import sqlite3
 import tempfile
