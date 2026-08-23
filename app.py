@@ -1,4 +1,4 @@
-import streamlit as st
+Import streamlit as st
 import pandas as pd
 import sqlite3
 import tempfile
@@ -67,8 +67,9 @@ def get_supabase_client() -> Client:
 
 supabase = get_supabase_client()
 
-# الأسماء المعتمدة والثابتة للمسجد
+# الأسماء المعتمدة والثابتة للمسجد (تمت إضافة صندوق الجمعة)
 DEFAULT_FUNDS = [
+    "صندوق الجمعة",
     "المسجد العامة",
     "الزكاة",
     "الصدقات",
@@ -191,14 +192,14 @@ page = st.sidebar.radio(
     [
         "🏠 الرئيسية (لوحة التحكم)",
         "📝 القيود اليومية",
-        "💵 الصناديق",
+        "💵 الصناديق وصندوق الجمعة",
         "👤 حساب الشيخ عبد الكريم",
         "👥 الرواتب",
         "📊 التقارير",
         "👤 حسابي الشخصي",
         "⚙️ الإعدادات"
     ],
-    key="side_nav_v66"
+    key="side_nav_v67"
 )
 
 # زر إضافة لرفع رصيد الشيخ أحمد إلى 200$
@@ -347,11 +348,11 @@ elif page == "📝 القيود اليومية":
         ref_name = ""
         if account_type == "رواتب الموظفين":
             if emp_list:
-                ref_name = st.selectbox("الموظف المستفيد:", emp_list, key="emp_select_dropdown_v66")
+                ref_name = st.selectbox("الموظف المستفيد:", emp_list, key="emp_select_dropdown_v67")
             else:
                 st.error("⚠️ لا يوجد موظفون مسجلون. يرجى إضافتهم من صفحة (👥 الرواتب) أولاً.")
 
-        with st.form("daily_form_v66", clear_on_submit=True):
+        with st.form("daily_form_v67", clear_on_submit=True):
             col1, col2 = st.columns(2)
             t_date = col1.date_input("التاريخ", datetime.now())
             
@@ -502,18 +503,48 @@ elif page == "📝 القيود اليومية":
             details = f"【 {row['type']} 】  •  كاش: {u_str}  •  ليرة: {l_str}  •  الإجمالي: ${tot_val:,.0f}  •  {desc_text}"
 
             c3.write(details)
-            if c4.button("🗑️ حذف", key=f"del_v66_{row['id']}"):
+            if c4.button("🗑️ حذف", key=f"del_v67_{row['id']}"):
                 supabase.table("transactions").delete().eq("id", row['id']).execute()
                 st.success("تم الحذف!")
                 safe_rerun()
 
-# --- 3. الصناديق ---
-elif page == "💵 الصناديق":
-    st.title("💵 إدارة وتفاصيل أرصدة الصناديق")
+# --- 3. الصناديق وصندوق الجمعة ---
+elif page == "💵 الصناديق وصندوق الجمعة":
+    st.title("💵 إدارة وتفاصيل أرصدة الصناديق ومداخيل الجمعة")
     df_trans = get_transactions_df()
     funds_list = get_funds()
 
-    st.markdown("### 📊 الملخص العام للصناديق")
+    st.markdown("### 🕌 استعلام مخصص لمداخيل (صندوق الجمعة)")
+    st.markdown("أعرف كم دخل صندوق الجمعة خلال شهر، سنة، أو فترة زمنية محددة بضغطة زر:")
+    
+    if not df_trans.empty:
+        df_trans['parsed_date'] = pd.to_datetime(df_trans['date'], errors='coerce')
+        df_jumaa = df_trans[(df_trans['fund'] == 'صندوق الجمعة') & (df_trans['type'] == 'قبض')]
+        
+        col_j1, col_j2, col_j3 = st.columns(3)
+        sel_jumaa_year = col_j1.number_input("سنة الاستعلام:", min_value=2020, value=datetime.now().year, key="j_year_sel")
+        sel_jumaa_month = col_j2.selectbox("شهر الاستعلام:", ["كل السنة"] + list(range(1, 13)), index=datetime.now().month, key="j_month_sel")
+        
+        if sel_jumaa_month == "كل السنة":
+            df_filtered_jumaa = df_jumaa[df_jumaa['parsed_date'].dt.year == sel_jumaa_year]
+            period_label = f"سنة {sel_jumaa_year}"
+        else:
+            df_filtered_jumaa = df_jumaa[(df_jumaa['parsed_date'].dt.year == sel_jumaa_year) & (df_jumaa['parsed_date'].dt.month == int(sel_jumaa_month))]
+            period_label = f"شهر {sel_jumaa_month} لسنة {sel_jumaa_year}"
+            
+        total_jumaa_income = df_filtered_jumaa['total_usd'].sum() if not df_filtered_jumaa.empty else 0.0
+        col_j3.metric(f"💵 إجمالي مداخيل صندوق الجمعة لـ ({period_label})", f"${total_jumaa_income:,.0f}" if total_jumaa_income > 0 else "$0")
+        
+        if not df_filtered_jumaa.empty:
+            with st.expander("📋 عرض تفاصيل سندات صندوق الجمعة لهذه الفترة"):
+                j_headers = ["رقم السند", "التاريخ", "البيان والتفاصيل", "المبلغ الإجمالي ($)"]
+                j_rows = [[r['id'], r['date'], r['description'], f"${float(r['total_usd']):,.0f}"] for _, r in df_filtered_jumaa.iterrows()]
+                render_custom_html_table(j_headers, j_rows)
+    else:
+        st.info("💡 لا توجد بيانات مسجلة بعد.")
+
+    st.write("---")
+    st.markdown("### 📊 الملخص العام لكافة الصناديق")
     headers = ["اسم الصندوق", "إجمالي المدفوع / ايداع ($)", "إجمالي المسترد / مصروف ($)", "الرصيد الصافي الحالي ($)"]
     rows = []
     for f in funds_list:
@@ -576,11 +607,11 @@ elif page == "👥 الرواتب":
     st.title("👥 إدارة رواتب الموظفين والعاملين")
     st.subheader("📝 إضافة موظف جديد")
     col1, col2 = st.columns(2)
-    emp_name = col1.text_input("اسم الموظف كاملاً", key="emp_n_v66")
-    emp_salary_str = col2.text_input("الراتب الشهري المحدد ($)", value="", placeholder="مثال: 200...", key="emp_s_v66")
+    emp_name = col1.text_input("اسم الموظف كاملاً", key="emp_n_v67")
+    emp_salary_str = col2.text_input("الراتب الشهري المحدد ($)", value="", placeholder="مثال: 200...", key="emp_s_v67")
     emp_salary = parse_float_input(emp_salary_str)
 
-    if st.button("حفظ الموظف الجديد", key="emp_save_v66"):
+    if st.button("حفظ الموظف الجديد", key="emp_save_v67"):
         if emp_name:
             clean_name = emp_name.replace('*', '').strip()
             supabase.table("employees").upsert({"name": clean_name, "salary": emp_salary}).execute()
@@ -599,7 +630,7 @@ elif page == "👥 الرواتب":
             ec1.write(f"👤 **{e_row['name']}**")
             s_sal_disp = f"${e_row['salary']:,.0f}" if e_row['salary'] > 0 else "-"
             ec2.write(f"💵 الراتب: **{s_sal_disp}**")
-            if ec3.button("🗑️ حذف", key=f"del_emp_v66_{e_row['id']}"):
+            if ec3.button("🗑️ حذف", key=f"del_emp_v67_{e_row['id']}"):
                 supabase.table("employees").delete().eq("id", e_row['id']).execute()
                 st.success("تم الحذف!")
                 safe_rerun()
@@ -607,7 +638,7 @@ elif page == "👥 الرواتب":
 # --- 6. التقارير ---
 elif page == "📊 التقارير":
     st.title("📊 التقارير المالية والطباعة للمسجد")
-    rep_type = st.selectbox("نوع التقرير المراد عرضه", ["يومي", "شهري", "سنوي"], key="rep_t_v66")
+    rep_type = st.selectbox("نوع التقرير المراد عرضه", ["يومي", "شهري", "سنوي"], key="rep_t_v67")
     df_report = get_transactions_df()
 
     if df_report.empty:
@@ -615,13 +646,13 @@ elif page == "📊 التقارير":
     else:
         df_report['parsed_date'] = pd.to_datetime(df_report['date'])
         if rep_type == "يومي":
-            sel_date = st.date_input("اختر اليوم", datetime.now(), key="rep_d_v66")
+            sel_date = st.date_input("اختر اليوم", datetime.now(), key="rep_d_v67")
             df_filtered = df_report[df_report['parsed_date'].dt.date == sel_date]
         elif rep_type == "شهري":
-            sel_month = st.slider("اختر الشهر", 1, 12, int(datetime.now().month), key="rep_m_v66")
+            sel_month = st.slider("اختر الشهر", 1, 12, int(datetime.now().month), key="rep_m_v67")
             df_filtered = df_report[df_report['parsed_date'].dt.month == sel_month]
         else:
-            sel_year = st.number_input("حدد السنة", min_value=2020, value=int(datetime.now().year), key="rep_y_v66")
+            sel_year = st.number_input("حدد السنة", min_value=2020, value=int(datetime.now().year), key="rep_y_v67")
             df_filtered = df_report[df_report['parsed_date'].dt.year == sel_year]
 
         if df_filtered.empty:
@@ -697,7 +728,7 @@ elif page == "📊 التقارير":
                 data=excel_data,
                 file_name=f"mosque_report_{rep_type}_{datetime.now().strftime('%Y%m%d')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key="export_excel_v66"
+                key="export_excel_v67"
             )
 
 # --- 7. حسابي الشخصي ---
@@ -728,7 +759,7 @@ elif page == "👤 حسابي الشخصي":
         st.subheader("➕ إضافة حركة شخصية جديدة")
         default_type_index = 1 if p_out >= p_in else 0
 
-        with st.form("personal_form_v66", clear_on_submit=True):
+        with st.form("personal_form_v67", clear_on_submit=True):
             col1, col2 = st.columns(2)
             p_date = col1.date_input("تاريخ الحركة", datetime.now(), key="p_add_date")
             p_type = col2.selectbox("نوع الحركة", ["قبض (مدخول)", "صرف (مصروف)"], index=default_type_index, key="p_add_type")
@@ -881,15 +912,15 @@ elif page == "👤 حسابي الشخصي":
             data=p_excel_data,
             file_name=f"personal_report_{datetime.now().strftime('%Y%m%d')}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            key="export_personal_excel_v66"
+            key="export_personal_excel_v67"
         )
 
         st.markdown("#### 🗑️ حذف حركة شخصية محددة")
         del_col1, del_col2 = st.columns([2, 1])
         personal_ids = df_personal['id'].tolist()
-        selected_id_to_delete = del_col1.selectbox("اختر رقم السند المطلوب حذفه:", personal_ids, key="sel_del_pers_id_v66")
+        selected_id_to_delete = del_col1.selectbox("اختر رقم السند المطلوب حذفه:", personal_ids, key="sel_del_pers_id_v67")
         
-        if del_col2.button("حذف السند المختار", key="btn_del_pers_action_v66"):
+        if del_col2.button("حذف السند المختار", key="btn_del_pers_action_v67"):
             try:
                 supabase.table("personal_transactions").delete().eq("id", selected_id_to_delete).execute()
                 st.success(f"تم حذف السند رقم {selected_id_to_delete} بنجاح!")
@@ -901,9 +932,9 @@ elif page == "👤 حسابي الشخصي":
 elif page == "⚙️ الإعدادات":
     st.title("⚙️ الإعدادات العامة وخيارات الاستيراد")
 
-    new_rate_str = st.text_input("تحديث سعر صرف الدولار مقابل الليرة اللبنانية", value=str(dollar_rate), key="set_r_v66")
+    new_rate_str = st.text_input("تحديث سعر صرف الدولار مقابل الليرة اللبنانية", value=str(dollar_rate), key="set_r_v67")
     new_rate = parse_float_input(new_rate_str)
-    if st.button("تحديث سعر الصرف الآن", key="set_save_r_v66"):
+    if st.button("تحديث سعر الصرف الآن", key="set_save_r_v67"):
         if new_rate > 0:
             supabase.table("settings").upsert({"key": "dollar_rate", "value": str(new_rate)}).execute()
             st.success("تم تحديث سعر الصرف بنجاح!")
@@ -914,9 +945,9 @@ elif page == "⚙️ الإعدادات":
     st.write("---")
     st.subheader("📥 استيراد قيود المسجد من ملف (.db أو Excel / CSV)")
     
-    uploaded_file = st.file_uploader("اختر ملف البيانات القديم للمسجد", key="import_file_v66")
+    uploaded_file = st.file_uploader("اختر ملف البيانات القديم للمسجد", key="import_file_v67")
     if uploaded_file is not None:
-        if st.button("🚀 بدء رفع واستيراد القيود للسحابة", key="start_import_btn_v66"):
+        if st.button("🚀 بدء رفع واستيراد القيود للسحابة", key="start_import_btn_v67"):
             try:
                 imported_count = 0
                 file_name_lower = uploaded_file.name.lower()
@@ -979,8 +1010,8 @@ elif page == "⚙️ الإعدادات":
 
     st.write("---")
     st.subheader("⚠️ منطقة خطر: تصفير العمليات والقيود للمسجد")
-    confirm_reset = st.checkbox("أوافق على حذف وتصفير جميع السندات والعمليات الحسابية للمسجد نهائياً", key="confirm_reset_v66")
-    if st.button("🔴 تصفير كافة عمليات المسجد الآن", key="reset_btn_v66"):
+    confirm_reset = st.checkbox("أوافق على حذف وتصفير جميع السندات والعمليات الحسابية للمسجد نهائياً", key="confirm_reset_v67")
+    if st.button("🔴 تصفير كافة عمليات المسجد الآن", key="reset_btn_v67"):
         if confirm_reset:
             try:
                 supabase.table("transactions").delete().neq("id", -1).execute()
