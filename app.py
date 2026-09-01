@@ -67,7 +67,7 @@ def get_supabase_client() -> Client:
 
 supabase = get_supabase_client()
 
-# الأسماء المعتمدة والثابتة للمسجد (تمت إضافة صندوق الجمعة)
+# الأسماء المعتمدة والثابتة للمسجد
 DEFAULT_FUNDS = [
     "صندوق الجمعة",
     "المسجد العامة",
@@ -199,7 +199,7 @@ page = st.sidebar.radio(
         "👤 حسابي الشخصي",
         "⚙️ الإعدادات"
     ],
-    key="side_nav_v68"
+    key="side_nav_v69"
 )
 
 # زر إضافة لرفع رصيد الشيخ أحمد إلى 200$
@@ -348,11 +348,11 @@ elif page == "📝 القيود اليومية":
         ref_name = ""
         if account_type == "رواتب الموظفين":
             if emp_list:
-                ref_name = st.selectbox("الموظف المستفيد:", emp_list, key="emp_select_dropdown_v68")
+                ref_name = st.selectbox("الموظف المستفيد:", emp_list, key="emp_select_dropdown_v69")
             else:
                 st.error("⚠️ لا يوجد موظفون مسجلون. يرجى إضافتهم من صفحة (👥 الرواتب) أولاً.")
 
-        with st.form("daily_form_v68", clear_on_submit=True):
+        with st.form("daily_form_v69", clear_on_submit=True):
             col1, col2 = st.columns(2)
             t_date = col1.date_input("التاريخ", datetime.now())
             
@@ -503,7 +503,7 @@ elif page == "📝 القيود اليومية":
             details = f"【 {row['type']} 】  •  كاش: {u_str}  •  ليرة: {l_str}  •  الإجمالي: ${tot_val:,.0f}  •  {desc_text}"
 
             c3.write(details)
-            if c4.button("🗑️ حذف", key=f"del_v68_{row['id']}"):
+            if c4.button("🗑️ حذف", key=f"del_v69_{row['id']}"):
                 supabase.table("transactions").delete().eq("id", row['id']).execute()
                 st.success("تم الحذف!")
                 safe_rerun()
@@ -607,11 +607,11 @@ elif page == "👥 الرواتب":
     st.title("👥 إدارة رواتب الموظفين والعاملين")
     st.subheader("📝 إضافة موظف جديد")
     col1, col2 = st.columns(2)
-    emp_name = col1.text_input("اسم الموظف كاملاً", key="emp_n_v68")
-    emp_salary_str = col2.text_input("الراتب الشهري المحدد ($)", value="", placeholder="مثال: 200...", key="emp_s_v68")
+    emp_name = col1.text_input("اسم الموظف كاملاً", key="emp_n_v69")
+    emp_salary_str = col2.text_input("الراتب الشهري المحدد ($)", value="", placeholder="مثال: 200...", key="emp_s_v69")
     emp_salary = parse_float_input(emp_salary_str)
 
-    if st.button("حفظ الموظف الجديد", key="emp_save_v68"):
+    if st.button("حفظ الموظف الجديد", key="emp_save_v69"):
         if emp_name:
             clean_name = emp_name.replace('*', '').strip()
             supabase.table("employees").upsert({"name": clean_name, "salary": emp_salary}).execute()
@@ -630,7 +630,7 @@ elif page == "👥 الرواتب":
             ec1.write(f"👤 **{e_row['name']}**")
             s_sal_disp = f"${e_row['salary']:,.0f}" if e_row['salary'] > 0 else "-"
             ec2.write(f"💵 الراتب: **{s_sal_disp}**")
-            if ec3.button("🗑️ حذف", key=f"del_emp_v68_{e_row['id']}"):
+            if ec3.button("🗑️ حذف", key=f"del_emp_v69_{e_row['id']}"):
                 supabase.table("employees").delete().eq("id", e_row['id']).execute()
                 st.success("تم الحذف!")
                 safe_rerun()
@@ -638,7 +638,7 @@ elif page == "👥 الرواتب":
 # --- 6. التقارير ---
 elif page == "📊 التقارير":
     st.title("📊 التقارير المالية والطباعة للمسجد")
-    rep_type = st.selectbox("نوع التقرير المراد عرضه", ["يومي", "شهري", "سنوي"], key="rep_t_v68")
+    rep_type = st.selectbox("نوع التقرير المراد عرضه", ["يومي", "شهري", "سنوي"], key="rep_t_v69")
     df_report = get_transactions_df()
 
     if df_report.empty:
@@ -646,13 +646,13 @@ elif page == "📊 التقارير":
     else:
         df_report['parsed_date'] = pd.to_datetime(df_report['date'])
         if rep_type == "يومي":
-            sel_date = st.date_input("اختر اليوم", datetime.now(), key="rep_d_v68")
+            sel_date = st.date_input("اختر اليوم", datetime.now(), key="rep_d_v69")
             df_filtered = df_report[df_report['parsed_date'].dt.date == sel_date]
         elif rep_type == "شهري":
-            sel_month = st.slider("اختر الشهر", 1, 12, int(datetime.now().month), key="rep_m_v68")
+            sel_month = st.slider("اختر الشهر", 1, 12, int(datetime.now().month), key="rep_m_v69")
             df_filtered = df_report[df_report['parsed_date'].dt.month == sel_month]
         else:
-            sel_year = st.number_input("حدد السنة", min_value=2020, value=int(datetime.now().year), key="rep_y_v68")
+            sel_year = st.number_input("حدد السنة", min_value=2020, value=int(datetime.now().year), key="rep_y_v69")
             df_filtered = df_report[df_report['parsed_date'].dt.year == sel_year]
 
         if df_filtered.empty:
@@ -728,7 +728,7 @@ elif page == "📊 التقارير":
                 data=excel_data,
                 file_name=f"mosque_report_{rep_type}_{datetime.now().strftime('%Y%m%d')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key="export_excel_v68"
+                key="export_excel_v69"
             )
 
 # --- 7. حسابي الشخصي ---
@@ -753,13 +753,13 @@ elif page == "👤 حسابي الشخصي":
 
     st.write("---")
     
-    p_tab_add, p_tab_edit = st.tabs(["➕ إضافة حركة شخصية", "✏️ تعديل حركة شخصية"])
+    p_tab_add, p_tab_edit, p_tab_monthly = st.tabs(["➕ إضافة حركة شخصية", "✏️ تعديل حركة شخصية", "📅 تقرير الحساب الشخصي لكل شهر"])
     
     with p_tab_add:
         st.subheader("➕ إضافة حركة شخصية جديدة")
         default_type_index = 1 if p_out >= p_in else 0
 
-        with st.form("personal_form_v68", clear_on_submit=True):
+        with st.form("personal_form_v69", clear_on_submit=True):
             col1, col2 = st.columns(2)
             p_date = col1.date_input("تاريخ الحركة", datetime.now(), key="p_add_date")
             p_type = col2.selectbox("نوع الحركة", ["قبض (مدخول)", "صرف (مصروف)"], index=default_type_index, key="p_add_type")
@@ -858,8 +858,78 @@ elif page == "👤 حسابي الشخصي":
                         st.success(f"تم تحديث الحركة الشخصية رقم {sel_pers_edit_id} بنجاح!")
                         safe_rerun()
 
+    with p_tab_monthly:
+        st.subheader("📅 تقرير الحساب الشخصي مفصلاً لكل شهر")
+        if df_personal.empty:
+            st.info("💡 لا توجد حركات شخصية مسجلة بعد.")
+        else:
+            df_personal['parsed_date'] = pd.to_datetime(df_personal['date'], errors='coerce')
+            df_personal['year_month'] = df_personal['parsed_date'].dt.to_period('M')
+            
+            unique_months = sorted(df_personal['year_month'].dropna().unique(), reverse=True)
+            
+            if not unique_months:
+                st.info("💡 لا توجد تواريخ صالحة لفرز الشهور.")
+            else:
+                month_labels = [str(m) for m in unique_months]
+                selected_month_str = st.selectbox("اختر الشهر المطلوب لعرض تقريره الشخصي:", month_labels, key="sel_pers_month_rep")
+                
+                sel_period = pd.Period(selected_month_str, freq='M')
+                df_month_pers = df_personal[df_personal['year_month'] == sel_period]
+                
+                m_in = df_month_pers[df_month_pers['type'] == 'قبض (مدخول)']['total_usd'].sum()
+                m_out = df_month_pers[df_month_pers['type'] == 'صرف (مصروف)']['total_usd'].sum()
+                m_net = m_in - m_out
+                
+                st.markdown(f"#### ملخص شهر: {selected_month_str}")
+                mc_1, mc_2, mc_3 = st.columns(3)
+                mc_1.metric("🟢 إجمالي المداخيل للشهر", f"${m_in:,.0f}" if m_in > 0 else "-")
+                mc_2.metric("🔴 إجمالي المصاريف للشهر", f"${m_out:,.0f}" if m_out > 0 else "-")
+                mc_3.metric("💰 صافي الشهر", f"${m_net:,.0f}" if m_net != 0 else "-")
+                
+                st.write("---")
+                m_headers = ["رقم السند", "التاريخ", "نوع الحركة", "التصنيف", "البيان والتفاصيل", "المبلغ الإجمالي ($)"]
+                m_rows = []
+                for _, r in df_month_pers.iterrows():
+                    m_rows.append([f"#سند {r['id']}", str(r['date'])[:10], r['type'], r['category'], r['description'], f"${float(r['total_usd']):,.0f}"])
+                render_custom_html_table(m_headers, m_rows)
+                
+                # زر تحميل إكسل للشهري الشخصي
+                df_month_export = df_month_pers.drop(columns=['parsed_date', 'year_month'])
+                pm_output = io.BytesIO()
+                with pd.ExcelWriter(pm_output, engine='openpyxl') as writer:
+                    df_month_export.to_excel(writer, index=False, sheet_name=f'Personal_{selected_month_str}')
+                    
+                    pm_book = writer.book
+                    pm_sheet = writer.sheets[f'Personal_{selected_month_str}']
+                    pm_sheet.sheet_view.rightToLeft = True
+                    
+                    pm_fill = PatternFill(start_color="004D40", end_color="004D40", fill_type="solid")
+                    pm_font = Font(color="D4AF37", bold=True)
+                    
+                    for col_num, value in enumerate(df_month_export.columns.values, 1):
+                        cell = pm_sheet.cell(row=1, column=col_num)
+                        cell.fill = pm_fill
+                        cell.font = pm_font
+                        cell.alignment = Alignment(horizontal="center", vertical="center")
+                        pm_sheet.column_dimensions[get_column_letter(col_num)].width = 20
+
+                    for row_num in range(2, pm_sheet.max_row + 1):
+                        for col_num in range(1, pm_sheet.max_column + 1):
+                            cell = pm_sheet.cell(row=row_num, column=col_num)
+                            cell.alignment = Alignment(horizontal="right")
+
+                pm_excel_data = pm_output.getvalue()
+                st.download_button(
+                    label=f"📥 تحميل تقرير شهر ({selected_month_str}) الشخصي (xlsx)",
+                    data=pm_excel_data,
+                    file_name=f"personal_report_{selected_month_str}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key=f"export_pers_month_{selected_month_str}"
+                )
+
     st.write("---")
-    st.subheader("📋 سجل الحركات الشخصية السابقة وتصدير التقارير")
+    st.subheader("📋 سجل الحركات الشخصية السابقة وتصدير التقارير العامة")
 
     if df_personal.empty:
         st.info("💡 لا توجد حركات شخصية مسجلة بعد.")
@@ -868,7 +938,7 @@ elif page == "👤 حسابي الشخصي":
         rows = []
         for _, row in df_personal.iterrows():
             r_id = row.get('id', '')
-            r_date = row.get('date', '')
+            r_date = str(row.get('date', ''))[:10]
             r_type = row.get('type', '')
             r_cat = row.get('category', 'عام')
             r_desc = row.get('description', '')
@@ -878,8 +948,9 @@ elif page == "👤 حسابي الشخصي":
         render_custom_html_table(headers, rows)
 
         p_output = io.BytesIO()
+        df_personal_clean = df_personal.drop(columns=[c for c in ['parsed_date', 'year_month'] if c in df_personal.columns])
         with pd.ExcelWriter(p_output, engine='openpyxl') as writer:
-            df_personal.to_excel(writer, index=False, sheet_name='PersonalReport')
+            df_personal_clean.to_excel(writer, index=False, sheet_name='PersonalReport')
             
             p_workbook = writer.book
             p_worksheet = writer.sheets['PersonalReport']
@@ -888,39 +959,34 @@ elif page == "👤 حسابي الشخصي":
             p_header_fill = PatternFill(start_color="004D40", end_color="004D40", fill_type="solid")
             p_header_font = Font(color="D4AF37", bold=True)
             
-            for col_num, value in enumerate(df_personal.columns.values, 1):
+            for col_num, value in enumerate(df_personal_clean.columns.values, 1):
                 cell = p_worksheet.cell(row=1, column=col_num)
                 cell.fill = p_header_fill
                 cell.font = p_header_font
                 cell.alignment = Alignment(horizontal="center", vertical="center")
                 p_worksheet.column_dimensions[get_column_letter(col_num)].width = 20
 
-            p_row_fill_odd = PatternFill(start_color="E8F5E9", end_color="E8F5E9", fill_type="solid")
-            p_row_fill_even = PatternFill(start_color="FEFDE8", end_color="FEFDE8", fill_type="solid")
-            
             for row_num in range(2, p_worksheet.max_row + 1):
-                fill = p_row_fill_odd if row_num % 2 == 0 else p_row_fill_even
                 for col_num in range(1, p_worksheet.max_column + 1):
                     cell = p_worksheet.cell(row=row_num, column=col_num)
-                    cell.fill = fill
                     cell.alignment = Alignment(horizontal="right")
 
         p_excel_data = p_output.getvalue()
 
         st.download_button(
-            label="📥 تحميل تقرير الحساب الشخصي المنسق (xlsx)",
+            label="📥 تحميل تقرير الحساب الشخصي العام الشامل (xlsx)",
             data=p_excel_data,
-            file_name=f"personal_report_{datetime.now().strftime('%Y%m%d')}.xlsx",
+            file_name=f"personal_report_all_{datetime.now().strftime('%Y%m%d')}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            key="export_personal_excel_v68"
+            key="export_personal_excel_v69"
         )
 
         st.markdown("#### 🗑️ حذف حركة شخصية محددة")
         del_col1, del_col2 = st.columns([2, 1])
         personal_ids = df_personal['id'].tolist()
-        selected_id_to_delete = del_col1.selectbox("اختر رقم السند المطلوب حذفه:", personal_ids, key="sel_del_pers_id_v68")
+        selected_id_to_delete = del_col1.selectbox("اختر رقم السند المطلوب حذفه:", personal_ids, key="sel_del_pers_id_v69")
         
-        if del_col2.button("حذف السند المختار", key="btn_del_pers_action_v68"):
+        if del_col2.button("حذف السند المختار", key="btn_del_pers_action_v69"):
             try:
                 supabase.table("personal_transactions").delete().eq("id", selected_id_to_delete).execute()
                 st.success(f"تم حذف السند رقم {selected_id_to_delete} بنجاح!")
@@ -932,9 +998,9 @@ elif page == "👤 حسابي الشخصي":
 elif page == "⚙️ الإعدادات":
     st.title("⚙️ الإعدادات العامة وخيارات الاستيراد")
 
-    new_rate_str = st.text_input("تحديث سعر صرف الدولار مقابل الليرة اللبنانية", value=str(dollar_rate), key="set_r_v68")
+    new_rate_str = st.text_input("تحديث سعر صرف الدولار مقابل الليرة اللبنانية", value=str(dollar_rate), key="set_r_v69")
     new_rate = parse_float_input(new_rate_str)
-    if st.button("تحديث سعر الصرف الآن", key="set_save_r_v68"):
+    if st.button("تحديث سعر الصرف الآن", key="set_save_r_v69"):
         if new_rate > 0:
             supabase.table("settings").upsert({"key": "dollar_rate", "value": str(new_rate)}).execute()
             st.success("تم تحديث سعر الصرف بنجاح!")
@@ -945,9 +1011,9 @@ elif page == "⚙️ الإعدادات":
     st.write("---")
     st.subheader("📥 استيراد قيود المسجد من ملف (.db أو Excel / CSV)")
     
-    uploaded_file = st.file_uploader("اختر ملف البيانات القديم للمسجد", key="import_file_v68")
+    uploaded_file = st.file_uploader("اختر ملف البيانات القديم للمسجد", key="import_file_v69")
     if uploaded_file is not None:
-        if st.button("🚀 بدء رفع واستيراد القيود للسحابة", key="start_import_btn_v68"):
+        if st.button("🚀 بدء رفع واستيراد القيود للسحابة", key="start_import_btn_v69"):
             try:
                 imported_count = 0
                 file_name_lower = uploaded_file.name.lower()
@@ -1010,8 +1076,8 @@ elif page == "⚙️ الإعدادات":
 
     st.write("---")
     st.subheader("⚠️ منطقة خطر: تصفير العمليات والقيود للمسجد")
-    confirm_reset = st.checkbox("أوافق على حذف وتصفير جميع السندات والعمليات الحسابية للمسجد نهائياً", key="confirm_reset_v68")
-    if st.button("🔴 تصفير كافة عمليات المسجد الآن", key="reset_btn_v68"):
+    confirm_reset = st.checkbox("أوافق على حذف وتصفير جميع السندات والعمليات الحسابية للمسجد نهائياً", key="confirm_reset_v69")
+    if st.button("🔴 تصفير كافة عمليات المسجد الآن", key="reset_btn_v69"):
         if confirm_reset:
             try:
                 supabase.table("transactions").delete().neq("id", -1).execute()
