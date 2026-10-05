@@ -755,15 +755,30 @@ elif page == "🚌 باص المدرسة":
         if df_bus_students.empty:
             st.info("💡 لا توجد بيانات طلاب مسجلة.")
         else:
-            all_months_recorded = sorted(df_bus_payments['year_month'].dropna().unique(), reverse=True) if not df_bus_payments.empty else [f"{datetime.now().year}-{datetime.now().month:02d}"]
+            all_months_recorded = sorted(df_bus_payments['year_month'].dropna().unique(), reverse=True) if not df_bus_payments.empty and 'year_month' in df_bus_payments.columns else [f"{datetime.now().year}-{datetime.now().month:02d}"]
+            if not all_months_recorded or all_months_recorded == [None]:
+                all_months_recorded = [f"{datetime.now().year}-{datetime.now().month:02d}"]
             
             sel_report_month = st.selectbox("اختر الشهر المطلوب لعرض تقرير الباص:", all_months_recorded, key="sel_bus_rep_month")
             
-            df_month_payments = df_bus_payments[df_bus_payments['year_month'] == sel_report_month] if not df_bus_payments.empty else pd.DataFrame()
+            df_month_payments = df_bus_payments[(df_bus_payments['year_month'] == sel_report_month)] if not df_bus_payments.empty and 'year_month' in df_bus_payments.columns else pd.DataFrame()
             
             total_month_bus_income = df_month_payments['total_usd'].sum() if not df_month_payments.empty else 0.0
             
-            st.markdown(f"#### 📊 إجمالي مقبوضات الباص لشهر ({sel_report_month}): **${total_month_bus_income:,.0f}**")
+            # --- حساب إجمالي الاشتراكات المطلوبة وما تم دفعه وما تبقى بحسب عدد الركاب (الطلاب) ---
+            total_students_count = len(df_bus_students)
+            total_expected_fees = df_bus_students['monthly_fee'].sum() if 'monthly_fee' in df_bus_students.columns else 0.0
+            total_remaining_fees = total_expected_fees - total_month_bus_income
+            if total_remaining_fees < 0:
+                total_remaining_fees = 0.0
+
+            # عرض الإحصائيات الشاملة (بطاقات المقياس) بحسب عدد الركاب
+            bc_m1, bc_m2, bc_m3, bc_m4 = st.columns(4)
+            bc_m1.metric("🎒 إجمالي عدد الطلاب (الركاب)", f"{total_students_count} طالب")
+            bc_m2.metric("📋 إجمالي الاشتراكات المطلوبة ($)", f"${total_expected_fees:,.0f}" if total_expected_fees > 0 else "-")
+            bc_m3.metric("🟢 إجمالي المقبوضات الفعلية ($)", f"${total_month_bus_income:,.0f}" if total_month_bus_income > 0 else "-")
+            bc_m4.metric("🔴 إجمالي المتبقي غير الدفوع ($)", f"${total_remaining_fees:,.0f}" if total_remaining_fees > 0 else "-")
+
             st.write("---")
             
             bus_headers = ["اسم الطالب", "الاشتراك الشهري ($)", "ما تم دفعه هذا الشهر ($)", "حالة الدفع لشهر " + sel_report_month, "تاريخ آخر دفعة / ملاحظات"]
@@ -1263,9 +1278,9 @@ elif page == "⚙️ الإعدادات":
 
     st.write("---")
     st.subheader("⚠️ منطقة خطر: تصفير العمليات والقيود للمسجد")
-    confirm_reset = st.checkbox("أوافق على حذف وتصفير جميع السندات والعمليات الحسابية للمسجد نهائياً", key="confirm_reset_v70")
+    confirm_reg25 = st.checkbox("أوافق على حذف وتصفير جميع السندات والعمليات الحسابية للمسجد نهائياً", key="confirm_reset_v70")
     if st.button("🔴 تصفير كافة عمليات المسجد الآن", key="reset_btn_v70"):
-        if confirm_reset:
+        if confirm_reg25:
             try:
                 supabase.table("transactions").delete().neq("id", -1).execute()
                 st.success("✅ تم تصفير كافة عمليات المسجد بنجاح!")
