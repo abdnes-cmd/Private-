@@ -1,4 +1,4 @@
-Import streamlit as st
+import streamlit as st
 import pandas as pd
 import sqlite3
 import tempfile
@@ -1274,4 +1274,4 @@ elif page == "⚙️ الإعدادات":
             except Exception as e:
                 st.error(f"حدث خطأ: {e}")
         else:
-            st.error("⚠️️ يرجى تحديد مربع الموافقة أولاً.")
+            st.error("⚠️ يرجى تحديد مربع الموافقة أولاً.")
