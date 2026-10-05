@@ -751,37 +751,40 @@ elif page == "🚌 باص المدرسة":
                         safe_rerun()
 
     with bus_tab3:
-        st.subheader("📅 تقرير اشتراكات الباص مفصلاً لكل شهر")
+        st.subheader("📅 تقرير ومتابعة من دفع ومن لم يدفع بحسب الشهر")
         if df_bus_students.empty:
             st.info("💡 لا توجد بيانات طلاب مسجلة.")
         else:
             all_months_recorded = sorted(df_bus_payments['year_month'].dropna().unique(), reverse=True) if not df_bus_payments.empty and 'year_month' in df_bus_payments.columns else [f"{datetime.now().year}-{datetime.now().month:02d}"]
-            if not all_months_recorded or all_months_recorded == [None]:
-                all_months_recorded = [f"{datetime.now().year}-{datetime.now().month:02d}"]
+            current_month_str = f"{datetime.now().year}-{datetime.now().month:02d}"
+            if current_month_str not in all_months_recorded:
+                all_months_recorded = [current_month_str] + all_months_recorded
             
-            sel_report_month = st.selectbox("اختر الشهر المطلوب لعرض تقرير الباص:", all_months_recorded, key="sel_bus_rep_month")
+            sel_report_month = st.selectbox("اختر الشهر المطلوب لعرض حالة الدفع:", all_months_recorded, key="sel_bus_rep_month")
             
             df_month_payments = df_bus_payments[(df_bus_payments['year_month'] == sel_report_month)] if not df_bus_payments.empty and 'year_month' in df_bus_payments.columns else pd.DataFrame()
             
             total_month_bus_income = df_month_payments['total_usd'].sum() if not df_month_payments.empty else 0.0
             
-            # --- حساب إجمالي الاشتراكات المطلوبة وما تم دفعه وما تبقى بحسب عدد الركاب (الطلاب) ---
+            # --- حساب إجمالي الاشتراكات المطلوبة وما تم دفعه وما تبقى بحسب عدد الركاب ---
             total_students_count = len(df_bus_students)
             total_expected_fees = df_bus_students['monthly_fee'].sum() if 'monthly_fee' in df_bus_students.columns else 0.0
             total_remaining_fees = total_expected_fees - total_month_bus_income
             if total_remaining_fees < 0:
                 total_remaining_fees = 0.0
 
-            # عرض الإحصائيات الشاملة (بطاقات المقياس) بحسب عدد الركاب
+            # عرض الإحصائيات الشاملة في أعلى الصفحة
             bc_m1, bc_m2, bc_m3, bc_m4 = st.columns(4)
             bc_m1.metric("🎒 إجمالي عدد الطلاب (الركاب)", f"{total_students_count} طالب")
-            bc_m2.metric("📋 إجمالي الاشتراكات المطلوبة ($)", f"${total_expected_fees:,.0f}" if total_expected_fees > 0 else "-")
-            bc_m3.metric("🟢 إجمالي المقبوضات الفعلية ($)", f"${total_month_bus_income:,.0f}" if total_month_bus_income > 0 else "-")
-            bc_m4.metric("🔴 إجمالي المتبقي غير الدفوع ($)", f"${total_remaining_fees:,.0f}" if total_remaining_fees > 0 else "-")
+            bc_m2.metric("📋 إجمالي المطلوب للشهر ($)", f"${total_expected_fees:,.0f}" if total_expected_fees > 0 else "-")
+            bc_m3.metric("🟢 إجمالي المدفوع فعلياً ($)", f"${total_month_bus_income:,.0f}" if total_month_bus_income > 0 else "-")
+            bc_m4.metric("🔴 إجمالي المتبقي غير المدفوع ($)", f"${total_remaining_fees:,.0f}" if total_remaining_fees > 0 else "-")
 
             st.write("---")
-            
-            bus_headers = ["اسم الطالب", "الاشتراك الشهري ($)", "ما تم دفعه هذا الشهر ($)", "حالة الدفع لشهر " + sel_report_month, "تاريخ آخر دفعة / ملاحظات"]
+            st.markdown(f"### 📋 جدول تفصيل حالة الدفع لشهر ({sel_report_month})")
+            st.markdown("من خلال هذا الجدول يمكنك معرفة **من دفع ومن لم يدفع** فوراً:")
+
+            bus_headers = ["اسم الطالب", "الاشتراك الشهري ($)", "ما تم دفعه هذا الشهر ($)", "حالة الدفع", "تاريخ آخر دفعة / ملاحظات"]
             bus_rows = []
             
             for _, student_row in df_bus_students.iterrows():
@@ -811,7 +814,7 @@ elif page == "🚌 باص المدرسة":
             render_custom_html_table(bus_headers, bus_rows)
             
             if not df_month_payments.empty:
-                st.markdown("#### 🔍 تفاصيل السندات المدفوعة في هذا الشهر:")
+                st.markdown("#### 🔍 تفاصيل سندات الدفع المسجلة في هذا الشهر:")
                 det_headers = ["رقم السند", "اسم الطالب", "تاريخ الدفع", "المبلغ كاش ($)", "المبلغ بالليرة (ل.ل)", "الإجمالي ($)", "ملاحظات"]
                 det_rows = []
                 for _, p_row in df_month_payments.iterrows():
