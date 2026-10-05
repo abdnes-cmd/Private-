@@ -121,6 +121,24 @@ def get_personal_transactions_df():
         pass
     return pd.DataFrame(columns=["id", "date", "description", "type", "amount_usd", "amount_lbp", "total_usd", "category"])
 
+def get_bus_students_df():
+    try:
+        res = supabase.table("bus_students").select("*").order("id", desc=True).execute()
+        if res.data:
+            return pd.DataFrame(res.data)
+    except Exception:
+        pass
+    return pd.DataFrame(columns=["id", "name", "monthly_fee"])
+
+def get_bus_payments_df():
+    try:
+        res = supabase.table("bus_payments").select("*").order("id", desc=True).execute()
+        if res.data:
+            return pd.DataFrame(res.data)
+    except Exception:
+        pass
+    return pd.DataFrame(columns=["id", "student_name", "year_month", "amount_usd", "amount_lbp", "total_usd", "payment_date", "notes"])
+
 def safe_rerun():
     for rerun_func in ['rerun', 'experimental_rerun']:
         if hasattr(st, rerun_func):
@@ -195,11 +213,12 @@ page = st.sidebar.radio(
         "💵 الصناديق وصندوق الجمعة",
         "👤 حساب الشيخ عبد الكريم",
         "👥 الرواتب",
+        "🚌 باص المدرسة",
         "📊 التقارير",
         "👤 حسابي الشخصي",
         "⚙️ الإعدادات"
     ],
-    key="side_nav_v69"
+    key="side_nav_v70"
 )
 
 # زر إضافة لرفع رصيد الشيخ أحمد إلى 200$
@@ -348,11 +367,11 @@ elif page == "📝 القيود اليومية":
         ref_name = ""
         if account_type == "رواتب الموظفين":
             if emp_list:
-                ref_name = st.selectbox("الموظف المستفيد:", emp_list, key="emp_select_dropdown_v69")
+                ref_name = st.selectbox("الموظف المستفيد:", emp_list, key="emp_select_dropdown_v70")
             else:
                 st.error("⚠️ لا يوجد موظفون مسجلون. يرجى إضافتهم من صفحة (👥 الرواتب) أولاً.")
 
-        with st.form("daily_form_v69", clear_on_submit=True):
+        with st.form("daily_form_v70", clear_on_submit=True):
             col1, col2 = st.columns(2)
             t_date = col1.date_input("التاريخ", datetime.now())
             
@@ -503,7 +522,7 @@ elif page == "📝 القيود اليومية":
             details = f"【 {row['type']} 】  •  كاش: {u_str}  •  ليرة: {l_str}  •  الإجمالي: ${tot_val:,.0f}  •  {desc_text}"
 
             c3.write(details)
-            if c4.button("🗑️ حذف", key=f"del_v69_{row['id']}"):
+            if c4.button("🗑️ حذف", key=f"del_v70_{row['id']}"):
                 supabase.table("transactions").delete().eq("id", row['id']).execute()
                 st.success("تم الحذف!")
                 safe_rerun()
@@ -607,11 +626,11 @@ elif page == "👥 الرواتب":
     st.title("👥 إدارة رواتب الموظفين والعاملين")
     st.subheader("📝 إضافة موظف جديد")
     col1, col2 = st.columns(2)
-    emp_name = col1.text_input("اسم الموظف كاملاً", key="emp_n_v69")
-    emp_salary_str = col2.text_input("الراتب الشهري المحدد ($)", value="", placeholder="مثال: 200...", key="emp_s_v69")
+    emp_name = col1.text_input("اسم الموظف كاملاً", key="emp_n_v70")
+    emp_salary_str = col2.text_input("الراتب الشهري المحدد ($)", value="", placeholder="مثال: 200...", key="emp_s_v70")
     emp_salary = parse_float_input(emp_salary_str)
 
-    if st.button("حفظ الموظف الجديد", key="emp_save_v69"):
+    if st.button("حفظ الموظف الجديد", key="emp_save_v70"):
         if emp_name:
             clean_name = emp_name.replace('*', '').strip()
             supabase.table("employees").upsert({"name": clean_name, "salary": emp_salary}).execute()
@@ -630,15 +649,192 @@ elif page == "👥 الرواتب":
             ec1.write(f"👤 **{e_row['name']}**")
             s_sal_disp = f"${e_row['salary']:,.0f}" if e_row['salary'] > 0 else "-"
             ec2.write(f"💵 الراتب: **{s_sal_disp}**")
-            if ec3.button("🗑️ حذف", key=f"del_emp_v69_{e_row['id']}"):
+            if ec3.button("🗑️ حذف", key=f"del_emp_v70_{e_row['id']}"):
                 supabase.table("employees").delete().eq("id", e_row['id']).execute()
                 st.success("تم الحذف!")
                 safe_rerun()
 
-# --- 6. التقارير ---
+# --- 6. باص المدرسة ---
+elif page == "🚌 باص المدرسة":
+    st.title("🚌 إدارة اشتراكات ومداخيل باص المدرسة")
+    st.markdown("هذا القسم مخصص لإدارة أسماء الطلاب المشتركين في الباص، تسجيل الاشتراكات الشهرية، وعرض تقارير شهرية مفصلة.")
+    st.write("---")
+
+    df_bus_students = get_bus_students_df()
+    df_bus_payments = get_bus_payments_df()
+
+    bus_tab1, bus_tab2, bus_tab3 = st.tabs(["➕ إدارة الطلاب والاشتراكات", "💰 تسجيل قبض اشتراك شهر", "📅 تقارير الباص الشهرية"])
+
+    with bus_tab1:
+        st.subheader("📝 تسجيل طالب جديد في الباص")
+        with st.form("bus_student_form", clear_on_submit=True):
+            bc1, bc2 = st.columns(2)
+            b_student_name = bc1.text_input("اسم الطالب كاملاً")
+            b_fee_str = bc2.text_input("قيمة الاشتراك الشهري المتفق عليه ($)", value="", placeholder="مثال: 50...")
+            b_fee = parse_float_input(b_fee_str)
+
+            b_stu_submit = st.form_submit_button("حفظ الطالب في الباص")
+            if b_stu_submit:
+                if not b_student_name:
+                    st.error("الرجاء إدخال اسم الطالب.")
+                else:
+                    clean_s_name = b_student_name.replace('*', '').strip()
+                    supabase.table("bus_students").upsert({"name": clean_s_name, "monthly_fee": b_fee}).execute()
+                    st.success(f"تم حفظ الطالب {clean_s_name} بنجاح!")
+                    safe_rerun()
+
+        st.write("---")
+        st.subheader("📋 قائمة الطلاب المشتركين في الباص")
+        if df_bus_students.empty:
+            st.info("💡 لا توجد أسماء طلاب مسجلة للباص بعد.")
+        else:
+            for _, s_row in df_bus_students.iterrows():
+                sc1, sc2, sc3 = st.columns([3, 2, 1])
+                sc1.write(f"student 🎒 **{s_row['name']}**".replace("student", "👤"))
+                s_fee_disp = f"${s_row['monthly_fee']:,.0f}" if s_row['monthly_fee'] > 0 else "-"
+                sc2.write(f"الاشتراك الشهري: **{s_fee_disp}**")
+                if sc3.button("🗑️ حذف", key=f"del_bus_stu_{s_row['id']}"):
+                    supabase.table("bus_students").delete().eq("id", s_row['id']).execute()
+                    st.success("تم الحذف!")
+                    safe_rerun()
+
+    with bus_tab2:
+        st.subheader("💰 تسجيل قبض اشتراك شهر لطالب")
+        if df_bus_students.empty:
+            st.warning("⚠️ يجب تسجيل الطلاب أولاً من تبويب (إدارة الطلاب والاشتراكات).")
+        else:
+            student_names_list = df_bus_students["name"].dropna().tolist()
+            
+            with st.form("bus_payment_form", clear_on_submit=True):
+                pc1, pc2 = st.columns(2)
+                selected_student = pc1.selectbox("اختر الطالب:", student_names_list)
+                
+                # إنشاء قائمة الشهور المتاحة
+                current_year = datetime.now().year
+                month_options = [f"{current_year}-{m:02d}" for m in range(1, 13)]
+                selected_ym = pc2.selectbox("الشهر المستهدف للاشتراك:", month_options, index=datetime.now().month - 1)
+                
+                pcc1, pcc2 = st.columns(2)
+                p_pay_date = pcc1.date_input("تاريخ القبض", datetime.now())
+                
+                # جلب الاشتراك الافتراضي للطالب لتسهيل الإدخال
+                default_student_fee = float(df_bus_students[df_bus_students['name'] == selected_student]['monthly_fee'].values[0]) if not df_bus_students[df_bus_students['name'] == selected_student].empty else 0.0
+                
+                pay_usd_str = pcc1.text_input("المبلغ المدفوع بالدولار ($)", value=str(default_student_fee) if default_student_fee > 0 else "")
+                pay_lbp_str = pcc2.text_input("المبلغ المدفوع بالليرة (ل.ل)", value="")
+                
+                p_usd = parse_float_input(pay_usd_str)
+                p_lbp = parse_float_input(pay_lbp_str)
+                
+                p_conv = round(p_lbp / dollar_rate) if dollar_rate > 0 else 0
+                p_tot = round(p_usd + p_conv)
+                
+                if p_lbp > 0:
+                    st.warning(f"📊 قيمة الليرة تعادل: {p_conv:,.0f}$ (الإجمالي: ${p_tot:,.0f})")
+                
+                p_notes = st.text_input("ملاحظات (اختياري)", value="")
+                
+                pay_submitted = st.form_submit_button("حفظ سند قبض اشتراك الباص")
+                if pay_submitted:
+                    if p_tot == 0:
+                        st.error("الرجاء إدخال مبلغ صحيح.")
+                    else:
+                        bus_pay_payload = {
+                            "student_name": selected_student,
+                            "year_month": selected_ym,
+                            "amount_usd": p_usd,
+                            "amount_lbp": p_lbp,
+                            "total_usd": p_tot,
+                            "payment_date": str(p_pay_date),
+                            "notes": p_notes
+                        }
+                        supabase.table("bus_payments").insert(bus_pay_payload).execute()
+                        st.success(f"تم تسجيل قبض اشتراك شهر {selected_ym} للطالب {selected_student} بنجاح!")
+                        safe_rerun()
+
+    with bus_tab3:
+        st.subheader("📅 تقرير اشتراكات الباص مفصلاً لكل شهر")
+        if df_bus_students.empty:
+            st.info("💡 لا توجد بيانات طلاب مسجلة.")
+        else:
+            all_months_recorded = sorted(df_bus_payments['year_month'].dropna().unique(), reverse=True) if not df_bus_payments.empty else [f"{datetime.now().year}-{datetime.now().month:02d}"]
+            
+            sel_report_month = st.selectbox("اختر الشهر المطلوب لعرض تقرير الباص:", all_months_recorded, key="sel_bus_rep_month")
+            
+            # فلترة المدفوعات لهذا الشهر
+            df_month_payments = df_bus_payments[df_bus_payments['year_month'] == sel_report_month] if not df_bus_payments.empty else pd.DataFrame()
+            
+            total_month_bus_income = df_month_payments['total_usd'].sum() if not df_month_payments.empty else 0.0
+            
+            st.markdown(f"#### 📊 إجمالي مقبوضات الباص لشهر ({sel_report_month}): **${total_month_bus_income:,.0f}**")
+            st.write("---")
+            
+            # جدول تفصيلي لكل طالب في هذا الشهر (هل دفع أم لا، كم دفع، المتبقي، إلخ)
+            bus_headers = ["اسم الطالب", "الاشتراك الشهري ($)", "ما تم دفعه هذا الشهر ($)", "حالة الدفع لشهر " + sel_report_month, "تاريخ آخر دفعة / ملاحظات"]
+            bus_rows = []
+            
+            for _, student_row in df_bus_students.iterrows():
+                s_name = student_row['name']
+                s_fee = float(student_row['monthly_fee'] or 0.0)
+                
+                # مجموع ما دفعه هذا الطالب في هذا الشهر المحدد
+                student_paid_this_month = df_month_payments[df_month_payments['student_name'] == s_name]['total_usd'].sum() if not df_month_payments.empty else 0.0
+                
+                if student_paid_this_month >= s_fee and s_fee > 0:
+                    status_badge = "✅ مدفوع بالكامل"
+                elif student_paid_this_month > 0:
+                    status_badge = "⚠️ مدفوع جزئياً"
+                else:
+                    status_badge = "❌ لم يدفع بعد"
+                
+                # جلب الملاحظات أو تاريخ الدفع إن وجد
+                notes_str = "-"
+                if not df_month_payments[df_month_payments['student_name'] == s_name].empty:
+                    match_rows = df_month_payments[df_month_payments['student_name'] == s_name]
+                    dates_str = ", ".join(match_rows['payment_date'].astype(str).tolist())
+                    notes_str = f"تاريخ: {dates_str}"
+                
+                s_fee_str = f"${s_fee:,.0f}" if s_fee > 0 else "-"
+                s_paid_str = f"${student_paid_this_month:,.0f}" if student_paid_this_month > 0 else "-"
+                
+                bus_rows.append([s_name, s_fee_str, s_paid_str, status_badge, notes_str])
+                
+            render_custom_html_table(bus_headers, bus_rows)
+            
+            # جدول الحركات التفصيلية لمن دفع في هذا الشهر
+            if not df_month_payments.empty:
+                st.markdown("#### 🔍 تفاصيل السندات المدفوعة في هذا الشهر:")
+                det_headers = ["رقم السند", "اسم الطالب", "تاريخ الدفع", "المبلغ كاش ($)", "المبلغ بالليرة (ل.ل)", "الإجمالي ($)", "ملاحظات"]
+                det_rows = []
+                for _, p_row in df_month_payments.iterrows():
+                    p_id = p_row.get('id', '')
+                    p_name = p_row.get('student_name', '')
+                    p_date = str(p_row.get('payment_date', ''))[:10]
+                    p_usd_c = float(p_row.get('amount_usd', 0.0))
+                    p_lbp_c = float(p_row.get('amount_lbp', 0.0))
+                    p_tot_c = float(p_row.get('total_usd', 0.0))
+                    p_not = p_row.get('notes', '-')
+                    
+                    det_rows.append([f"#سند {p_id}", p_name, p_date, f"${p_usd_c:,.0f}" if p_usd_c > 0 else "", f"{p_lbp_c:,.0f} ل.ل" if p_lbp_c > 0 else "", f"${p_tot_c:,.0f}", p_not if p_not else "-"])
+                render_custom_html_table(det_headers, det_rows)
+                
+                # زر حذف سند دفع باص إذا لزم الأمر
+                st.markdown("#### 🗑️ حذف سند دفع باص خاطئ")
+                del_pc1, del_pc2 = st.columns([2, 1])
+                payment_ids = df_month_payments['id'].tolist()
+                selected_pay_to_del = del_pc1.selectbox("اختر رقم السند المطلوب حذفه:", payment_ids, key="sel_del_bus_pay")
+                if del_pc2.button("حذف السند المحدد", key="btn_del_bus_pay_action"):
+                    try:
+                        supabase.table("bus_payments").delete().eq("id", selected_pay_to_del).execute()
+                        st.success(f"تم حذف سند الدفع رقم {selected_pay_to_del} بنجاح!")
+                        safe_rerun()
+                    except Exception as e:
+                        st.error(f"خطأ في الحذف: {e}")
+
+# --- 7. التقارير ---
 elif page == "📊 التقارير":
     st.title("📊 التقارير المالية والطباعة للمسجد")
-    rep_type = st.selectbox("نوع التقرير المراد عرضه", ["يومي", "شهري", "سنوي"], key="rep_t_v69")
+    rep_type = st.selectbox("نوع التقرير المراد عرضه", ["يومي", "شهري", "سنوي"], key="rep_t_v70")
     df_report = get_transactions_df()
 
     if df_report.empty:
@@ -646,13 +842,13 @@ elif page == "📊 التقارير":
     else:
         df_report['parsed_date'] = pd.to_datetime(df_report['date'])
         if rep_type == "يومي":
-            sel_date = st.date_input("اختر اليوم", datetime.now(), key="rep_d_v69")
+            sel_date = st.date_input("اختر اليوم", datetime.now(), key="rep_d_v70")
             df_filtered = df_report[df_report['parsed_date'].dt.date == sel_date]
         elif rep_type == "شهري":
-            sel_month = st.slider("اختر الشهر", 1, 12, int(datetime.now().month), key="rep_m_v69")
+            sel_month = st.slider("اختر الشهر", 1, 12, int(datetime.now().month), key="rep_m_v70")
             df_filtered = df_report[df_report['parsed_date'].dt.month == sel_month]
         else:
-            sel_year = st.number_input("حدد السنة", min_value=2020, value=int(datetime.now().year), key="rep_y_v69")
+            sel_year = st.number_input("حدد السنة", min_value=2020, value=int(datetime.now().year), key="rep_y_v70")
             df_filtered = df_report[df_report['parsed_date'].dt.year == sel_year]
 
         if df_filtered.empty:
@@ -728,10 +924,10 @@ elif page == "📊 التقارير":
                 data=excel_data,
                 file_name=f"mosque_report_{rep_type}_{datetime.now().strftime('%Y%m%d')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key="export_excel_v69"
+                key="export_excel_v70"
             )
 
-# --- 7. حسابي الشخصي ---
+# --- 8. حسابي الشخصي ---
 elif page == "👤 حسابي الشخصي":
     st.title("👤 حسابي الشخصي (مداخيل ومصاريف خاصة)")
     st.markdown("هذا القسم خاص بك وحدك لإدارة مدخولك ومصاريفك الشخصية بعيداً عن حسابات المسجد.")
@@ -759,7 +955,7 @@ elif page == "👤 حسابي الشخصي":
         st.subheader("➕ إضافة حركة شخصية جديدة")
         default_type_index = 1 if p_out >= p_in else 0
 
-        with st.form("personal_form_v69", clear_on_submit=True):
+        with st.form("personal_form_v70", clear_on_submit=True):
             col1, col2 = st.columns(2)
             p_date = col1.date_input("تاريخ الحركة", datetime.now(), key="p_add_date")
             p_type = col2.selectbox("نوع الحركة", ["قبض (مدخول)", "صرف (مصروف)"], index=default_type_index, key="p_add_type")
@@ -978,15 +1174,15 @@ elif page == "👤 حسابي الشخصي":
             data=p_excel_data,
             file_name=f"personal_report_all_{datetime.now().strftime('%Y%m%d')}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            key="export_personal_excel_v69"
+            key="export_personal_excel_v70"
         )
 
         st.markdown("#### 🗑️ حذف حركة شخصية محددة")
         del_col1, del_col2 = st.columns([2, 1])
         personal_ids = df_personal['id'].tolist()
-        selected_id_to_delete = del_col1.selectbox("اختر رقم السند المطلوب حذفه:", personal_ids, key="sel_del_pers_id_v69")
+        selected_id_to_delete = del_col1.selectbox("اختر رقم السند المطلوب حذفه:", personal_ids, key="sel_del_pers_id_v70")
         
-        if del_col2.button("حذف السند المختار", key="btn_del_pers_action_v69"):
+        if del_col2.button("حذف السند المختار", key="btn_del_pers_action_v70"):
             try:
                 supabase.table("personal_transactions").delete().eq("id", selected_id_to_delete).execute()
                 st.success(f"تم حذف السند رقم {selected_id_to_delete} بنجاح!")
@@ -998,9 +1194,9 @@ elif page == "👤 حسابي الشخصي":
 elif page == "⚙️ الإعدادات":
     st.title("⚙️ الإعدادات العامة وخيارات الاستيراد")
 
-    new_rate_str = st.text_input("تحديث سعر صرف الدولار مقابل الليرة اللبنانية", value=str(dollar_rate), key="set_r_v69")
+    new_rate_str = st.text_input("تحديث سعر صرف الدولار مقابل الليرة اللبنانية", value=str(dollar_rate), key="set_r_v70")
     new_rate = parse_float_input(new_rate_str)
-    if st.button("تحديث سعر الصرف الآن", key="set_save_r_v69"):
+    if st.button("تحديث سعر الصرف الآن", key="set_save_r_v70"):
         if new_rate > 0:
             supabase.table("settings").upsert({"key": "dollar_rate", "value": str(new_rate)}).execute()
             st.success("تم تحديث سعر الصرف بنجاح!")
@@ -1011,9 +1207,9 @@ elif page == "⚙️ الإعدادات":
     st.write("---")
     st.subheader("📥 استيراد قيود المسجد من ملف (.db أو Excel / CSV)")
     
-    uploaded_file = st.file_uploader("اختر ملف البيانات القديم للمسجد", key="import_file_v69")
+    uploaded_file = st.file_uploader("اختر ملف البيانات القديم للمسجد", key="import_file_v70")
     if uploaded_file is not None:
-        if st.button("🚀 بدء رفع واستيراد القيود للسحابة", key="start_import_btn_v69"):
+        if st.button("🚀 بدء رفع واستيراد القيود للسحابة", key="start_import_btn_v70"):
             try:
                 imported_count = 0
                 file_name_lower = uploaded_file.name.lower()
@@ -1023,21 +1219,21 @@ elif page == "⚙️ الإعدادات":
                         tmp_file.write(uploaded_file.getvalue())
                         tmp_path = tmp_file.name
                     
-                    conn = sqlite3.connect(tmp_path)
-                    cursor = conn.cursor()
+                    cols_conn = sqlite3.connect(tmp_path)
+                    cursor = cols_conn.cursor()
                     cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
                     tables = cursor.fetchall()
                     
                     df_import = pd.DataFrame()
                     for table in tables:
                         t_name = table[0]
-                        temp_df = pd.read_sql(f"SELECT * FROM {t_name}", conn)
+                        temp_df = pd.read_sql(f"SELECT * FROM {t_name}", cols_conn)
                         if 'date' in temp_df.columns or 'description' in temp_df.columns or 'type' in temp_df.columns:
                             df_import = temp_df
                             break
                     if df_import.empty and tables:
-                        df_import = pd.read_sql(f"SELECT * FROM {tables[0][0]}", conn)
-                    conn.close()
+                        df_import = pd.read_sql(f"SELECT * FROM {tables[0][0]}", cols_conn)
+                    cols_conn.close()
                     os.unlink(tmp_path)
                 elif 'csv' in file_name_lower or uploaded_file.type == 'text/csv':
                     df_import = pd.read_csv(uploaded_file)
@@ -1071,13 +1267,13 @@ elif page == "⚙️ الإعدادات":
                 st.success(f"✅ تم استيراد عدد {imported_count} قيد بنجاح إلى سحابة Supabase!")
                 st.balloons()
                 safe_rerun()
-            except Exception as e:
+            exceptException as e:
                 st.error(f"حدث خطأ أثناء رفع الملف: {e}")
 
     st.write("---")
     st.subheader("⚠️ منطقة خطر: تصفير العمليات والقيود للمسجد")
-    confirm_reset = st.checkbox("أوافق على حذف وتصفير جميع السندات والعمليات الحسابية للمسجد نهائياً", key="confirm_reset_v69")
-    if st.button("🔴 تصفير كافة عمليات المسجد الآن", key="reset_btn_v69"):
+    confirm_reset = st.checkbox("أوافق على حذف وتصفير جميع السندات والعمليات الحسابية للمسجد نهائياً", key="confirm_reset_v70")
+    if st.button("🔴 تصفير كافة عمليات المسجد الآن", key="reset_btn_v70"):
         if confirm_reset:
             try:
                 supabase.table("transactions").delete().neq("id", -1).execute()
