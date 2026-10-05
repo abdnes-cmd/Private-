@@ -1,4 +1,4 @@
-import streamlit as st
+Import streamlit as st
 import pandas as pd
 import sqlite3
 import tempfile
@@ -709,7 +709,6 @@ elif page == "🚌 باص المدرسة":
                 pc1, pc2 = st.columns(2)
                 selected_student = pc1.selectbox("اختر الطالب:", student_names_list)
                 
-                # إنشاء قائمة الشهور المتاحة
                 current_year = datetime.now().year
                 month_options = [f"{current_year}-{m:02d}" for m in range(1, 13)]
                 selected_ym = pc2.selectbox("الشهر المستهدف للاشتراك:", month_options, index=datetime.now().month - 1)
@@ -717,7 +716,6 @@ elif page == "🚌 باص المدرسة":
                 pcc1, pcc2 = st.columns(2)
                 p_pay_date = pcc1.date_input("تاريخ القبض", datetime.now())
                 
-                # جلب الاشتراك الافتراضي للطالب لتسهيل الإدخال
                 default_student_fee = float(df_bus_students[df_bus_students['name'] == selected_student]['monthly_fee'].values[0]) if not df_bus_students[df_bus_students['name'] == selected_student].empty else 0.0
                 
                 pay_usd_str = pcc1.text_input("المبلغ المدفوع بالدولار ($)", value=str(default_student_fee) if default_student_fee > 0 else "")
@@ -761,7 +759,6 @@ elif page == "🚌 باص المدرسة":
             
             sel_report_month = st.selectbox("اختر الشهر المطلوب لعرض تقرير الباص:", all_months_recorded, key="sel_bus_rep_month")
             
-            # فلترة المدفوعات لهذا الشهر
             df_month_payments = df_bus_payments[df_bus_payments['year_month'] == sel_report_month] if not df_bus_payments.empty else pd.DataFrame()
             
             total_month_bus_income = df_month_payments['total_usd'].sum() if not df_month_payments.empty else 0.0
@@ -769,7 +766,6 @@ elif page == "🚌 باص المدرسة":
             st.markdown(f"#### 📊 إجمالي مقبوضات الباص لشهر ({sel_report_month}): **${total_month_bus_income:,.0f}**")
             st.write("---")
             
-            # جدول تفصيلي لكل طالب في هذا الشهر (هل دفع أم لا، كم دفع، المتبقي، إلخ)
             bus_headers = ["اسم الطالب", "الاشتراك الشهري ($)", "ما تم دفعه هذا الشهر ($)", "حالة الدفع لشهر " + sel_report_month, "تاريخ آخر دفعة / ملاحظات"]
             bus_rows = []
             
@@ -777,7 +773,6 @@ elif page == "🚌 باص المدرسة":
                 s_name = student_row['name']
                 s_fee = float(student_row['monthly_fee'] or 0.0)
                 
-                # مجموع ما دفعه هذا الطالب في هذا الشهر المحدد
                 student_paid_this_month = df_month_payments[df_month_payments['student_name'] == s_name]['total_usd'].sum() if not df_month_payments.empty else 0.0
                 
                 if student_paid_this_month >= s_fee and s_fee > 0:
@@ -787,7 +782,6 @@ elif page == "🚌 باص المدرسة":
                 else:
                     status_badge = "❌ لم يدفع بعد"
                 
-                # جلب الملاحظات أو تاريخ الدفع إن وجد
                 notes_str = "-"
                 if not df_month_payments[df_month_payments['student_name'] == s_name].empty:
                     match_rows = df_month_payments[df_month_payments['student_name'] == s_name]
@@ -801,7 +795,6 @@ elif page == "🚌 باص المدرسة":
                 
             render_custom_html_table(bus_headers, bus_rows)
             
-            # جدول الحركات التفصيلية لمن دفع في هذا الشهر
             if not df_month_payments.empty:
                 st.markdown("#### 🔍 تفاصيل السندات المدفوعة في هذا الشهر:")
                 det_headers = ["رقم السند", "اسم الطالب", "تاريخ الدفع", "المبلغ كاش ($)", "المبلغ بالليرة (ل.ل)", "الإجمالي ($)", "ملاحظات"]
@@ -818,7 +811,6 @@ elif page == "🚌 باص المدرسة":
                     det_rows.append([f"#سند {p_id}", p_name, p_date, f"${p_usd_c:,.0f}" if p_usd_c > 0 else "", f"{p_lbp_c:,.0f} ل.ل" if p_lbp_c > 0 else "", f"${p_tot_c:,.0f}", p_not if p_not else "-"])
                 render_custom_html_table(det_headers, det_rows)
                 
-                # زر حذف سند دفع باص إذا لزم الأمر
                 st.markdown("#### 🗑️ حذف سند دفع باص خاطئ")
                 del_pc1, del_pc2 = st.columns([2, 1])
                 payment_ids = df_month_payments['id'].tolist()
@@ -1090,7 +1082,6 @@ elif page == "👤 حسابي الشخصي":
                     m_rows.append([f"#سند {r['id']}", str(r['date'])[:10], r['type'], r['category'], r['description'], f"${float(r['total_usd']):,.0f}"])
                 render_custom_html_table(m_headers, m_rows)
                 
-                # زر تحميل إكسل للشهري الشخصي
                 df_month_export = df_month_pers.drop(columns=['parsed_date', 'year_month'])
                 pm_output = io.BytesIO()
                 with pd.ExcelWriter(pm_output, engine='openpyxl') as writer:
@@ -1267,7 +1258,7 @@ elif page == "⚙️ الإعدادات":
                 st.success(f"✅ تم استيراد عدد {imported_count} قيد بنجاح إلى سحابة Supabase!")
                 st.balloons()
                 safe_rerun()
-            exceptException as e:
+            except Exception as e:
                 st.error(f"حدث خطأ أثناء رفع الملف: {e}")
 
     st.write("---")
@@ -1283,4 +1274,4 @@ elif page == "⚙️ الإعدادات":
             except Exception as e:
                 st.error(f"حدث خطأ: {e}")
         else:
-            st.error("⚠️ يرجى تحديد مربع الموافقة أولاً.")
+            st.error("⚠️️ يرجى تحديد مربع الموافقة أولاً.")
